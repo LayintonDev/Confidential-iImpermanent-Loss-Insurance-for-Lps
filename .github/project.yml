@@ -1,0 +1,168 @@
+name: Confidential IL Insurance Hook Sprint
+description: >
+  4-day sprint to build Confidential IL Insurance Hook with Uniswap v4 hook,
+  EigenLayer AVS, Fhenix integration, and Next.js frontend.
+public: false
+columns:
+  - name: Backlog
+  - name: To Do
+  - name: In Progress
+  - name: Review
+  - name: Done
+
+issues:
+  # Day 1
+  - title: "[Day 1][Setup] Setup monorepo structure"
+    body: |
+      Setup repo with:
+      - contracts/ (Hardhat + Foundry)
+      - frontend/ (Next.js + Tailwind + Shadcn)
+      - avs/ (EigenLayer node service)
+      - fhenix-service/ (off-chain FHE calc service)
+      - scripts/ (deployment, local env)
+      - test/ (unit + integration tests)
+
+      Tasks:
+      - Init npm/yarn workspaces
+      - Configure TypeScript everywhere
+      - Prettier + ESLint configs
+      - Add root README.md
+    labels: ["setup", "contracts", "frontend"]
+
+  - title: "[Day 1][Contracts] Implement ConfidentialILHook.sol (skeleton)"
+    body: |
+      Goal: Base Uniswap v4 hook contract.
+
+      Tasks:
+      - Functions: beforeAddLiquidity, afterRemoveLiquidity
+      - Track LP position data
+      - Add premium collection function
+      - Events: PremiumPaid, PositionInsured
+    labels: ["contracts"]
+
+  - title: "[Day 1][Contracts] Implement InsuranceVault.sol"
+    body: |
+      Goal: Vault for collected premiums + payouts.
+
+      Tasks:
+      - Store premiums
+      - Allow admin top-ups
+      - Handle payouts (transfer ERC20 to LP)
+      - Events: PremiumCollected, PayoutExecuted
+    labels: ["contracts"]
+
+  - title: "[Day 1][Tests] Write initial Hardhat test for premiums + vault"
+    body: |
+      Tests:
+      - Deploy hook + vault
+      - Simulate LP paying premium
+      - Verify vault balance
+    labels: ["contracts", "tests"]
+
+  # Day 2
+  - title: "[Day 2][Contracts] Extend ConfidentialILHook.sol with payout logic skeleton"
+    body: |
+      Tasks:
+      - Add checkImpermanentLoss (placeholder)
+      - Add triggerPayoutIfEligible
+      - Integrate with InsuranceVault
+      - Add events + test stubs
+    labels: ["contracts"]
+
+  - title: "[Day 2][Frontend] Setup Next.js frontend with wallet connection"
+    body: |
+      Tasks:
+      - Install wagmi + RainbowKit
+      - Add WalletConnect.tsx
+      - Setup navbar
+      - Dashboard skeleton page
+    labels: ["frontend"]
+
+  - title: "[Day 2][Frontend] Implement PremiumCard component"
+    body: |
+      Tasks:
+      - UI: Show premium rate
+      - Button: "Pay Premium"
+      - OnClick: call hook contract
+      - Show tx status + events
+    labels: ["frontend"]
+
+  - title: "[Day 2][Frontend] Implement VaultStats component"
+    body: |
+      Tasks:
+      - Fetch vault balance, premiums, payouts
+      - Display in card layout
+      - Ethers.js integration
+    labels: ["frontend"]
+
+  # Day 3
+  - title: "[Day 3][Fhenix] Integrate Fhenix service (mock)"
+    body: |
+      Tasks:
+      - fhenix-service/fhe-compute.ts
+      - Function: computeImpermanentLoss (mock return)
+      - Stubs: encrypt + decrypt
+      - Hook requests off-chain service (mock event)
+    labels: ["fhenix", "contracts"]
+
+  - title: "[Day 3][Frontend] Implement ClaimCard component"
+    body: |
+      Tasks:
+      - UI: Show claim eligibility
+      - Button: "Request Payout"
+      - Show claim status (pending/approved/paid)
+    labels: ["frontend"]
+
+  - title: "[Day 3][AVS] Setup EigenLayer AVS skeleton (mock)"
+    body: |
+      Tasks:
+      - avs/src/index.ts
+      - Function: verifyPayout (mock)
+      - Mock slashing
+      - Listen for PayoutRequested events
+    labels: ["avs"]
+
+  - title: "[Day 3][Tests] End-to-end integration test"
+    body: |
+      Flow:
+      - LP adds liquidity + pays premium
+      - Mock Fhenix returns IL%
+      - AVS validates
+      - Vault executes payout
+      - Assert balances
+    labels: ["tests", "integration"]
+
+  # Day 4
+  - title: "[Day 4][Security] Add security checks to contracts"
+    body: |
+      Tasks:
+      - ReentrancyGuard (OpenZeppelin)
+      - Validate only insured positions payout
+      - Restrict vault admin
+    labels: ["contracts", "security"]
+
+  - title: "[Day 4][Frontend] Polish dashboard UI"
+    body: |
+      Tasks:
+      - Add ClaimCard + VaultStats
+      - Show insured positions
+      - Premium history
+      - Error handling + loaders
+    labels: ["frontend", "ui"]
+
+  - title: "[Day 4][Docs] Write detailed README.md"
+    body: |
+      Tasks:
+      - Explain architecture
+      - Setup guide (contracts + frontend)
+      - Document insurance flow
+    labels: ["docs"]
+
+  - title: "[Day 4][Deployment] Deploy demo to Vercel + Testnet"
+    body: |
+      Tasks:
+      - Deploy contracts (Sepolia/Holesky)
+      - Deploy frontend to Vercel
+      - Update addresses in frontend config
+      - Verify end-to-end flow live
+    labels: ["deployment", "frontend", "contracts"]
