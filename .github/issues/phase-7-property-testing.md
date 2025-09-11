@@ -241,7 +241,7 @@ include_push_bytes = true
 ## Tools & Libraries
 
 - [ ] Foundry for fuzz and property testing
-- [ ] Hardhat for mainnet forking
+- [ ] Foundry for mainnet forking
 - [ ] Slither for static analysis
 - [ ] Mythril for security analysis
 - [ ] Echidna for property-based testing (alternative)

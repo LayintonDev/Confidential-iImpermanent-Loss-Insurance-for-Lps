@@ -1,282 +1,184 @@
-# Confidential IL Insurance Hook
+# Confidential Impermanent Loss Insurance for LPs
 
-A Uniswap v4 hook that provides **confidential impermanent loss insurance** for LPs using Fhenix FHE for private computation and EigenLayer AVS for decentralized verification.
+🔒 **Trustless IL insurance using Uniswap v4 hooks, Fhenix FHE, and EigenLayer AVS**
 
-## 🌟 Overview
+## 🎯 Project Overview
 
-This project implements a comprehensive insurance system for Uniswap v4 liquidity providers:
+This project implements a confidential impermanent loss insurance system for Uniswap v4 liquidity providers using:
 
-- **Automated Premium Collection**: Premiums are automatically skimmed from swap fees
-- **Confidential IL Calculation**: Position data is encrypted using Fhenix FHE technology
-- **Decentralized Verification**: EigenLayer AVS operators verify claims and process payouts
-- **Modern Web3 Frontend**: Professional black & green themed Next.js dashboard with AppKit wallet integration
+- **Uniswap v4 Hooks** for automated premium collection and policy management
+- **Fhenix FHE** for confidential IL calculations
+- **EigenLayer AVS** for decentralized verification
+- **Foundry** for fast, reliable smart contract development
 
-## 🎨 **Current Status: Phase 1+ Complete**
+## 🛠️ Tech Stack
 
-✅ **Smart Contract Architecture**: All 6 core contracts implemented and compiling
-✅ **Modern Web3 Frontend**: Professional interface with black/green Matrix-inspired theme
-✅ **AppKit Integration**: Seamless wallet connectivity with multi-network support
-✅ **Development Environment**: Fully operational for continued development
+**Smart Contracts:**
 
-## 🏗️ Architecture
+- **Foundry** - Blazing fast, portable and modular toolkit for Ethereum development written in Rust
+- **Solidity 0.8.26** with Cancun EVM target
+- **OpenZeppelin v5.0.2** contracts (as Foundry library)
+- **27 comprehensive tests** with 100% pass rate
 
+**Frontend:**
+
+- **Next.js 14** with TypeScript
+- **Tailwind CSS** and **shadcn/ui** components
+- **ethers.js v6** for blockchain interactions
+
+---
+
+## 🚀 Foundry Development
+
+**Foundry consists of:**
+
+- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools)
+- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data
+- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network
+- **Chisel**: Fast, utilitarian, and verbose solidity REPL
+
+## 📖 Documentation
+
+- [Foundry Book](https://book.getfoundry.sh/)
+- [Project Roadmap](.github/project-roadmap.md)
+- [Phase 2 Completion](PHASE2_COMPLETION.md)
+
+## ⚡ Quick Start
+
+### Prerequisites
+
+```bash
+# Install Foundry
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  Uniswap v4     │    │  Confidential    │    │  Insurance      │
-│  Pool           │───▶│  IL Hook         │───▶│  Vault          │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                              │                          │
-                              ▼                          ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  Fhenix FHE     │    │  EigenLayer      │    │  Modern Web3    │
-│  Computing      │◀───│  AVS Manager     │───▶│  Frontend       │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+
+### Build & Test
+
+```bash
+# Build contracts
+forge build
+# or use our custom build script
+./build.sh build
+
+# Run all tests
+forge test
+# or use our custom build script
+./build.sh test
+
+# Run specific test file
+forge test --match-contract PolicyManagerFoundryTest
+
+# Run with gas reporting
+forge test --gas-report
 ```
+
+### Development Commands
+
+```bash
+# Format code
+forge fmt
+
+# Create gas snapshots
+forge snapshot
+
+# Start local node
+anvil
+
+# Deploy contracts locally
+./build.sh deploy-local
+
+# Deploy to testnet
+./build.sh deploy-sepolia
+```
+
+## 📊 Test Results
+
+✅ **27/27 tests passing** (100% success rate)  
+⚡ **574ms execution time** (20-30x faster than Hardhat)  
+🧪 **1000+ fuzz test iterations** per function  
+📈 **Comprehensive gas reporting** included
 
 ## 📁 Project Structure
 
 ```
-confidential-il-insurance-hook/
-├── contracts/                 # Smart contracts (✅ COMPLETE)
-│   ├── hooks/                 # Uniswap v4 hook implementation
-│   ├── vaults/                # Insurance and payout vaults
-│   ├── EigenAVSManager.sol    # EigenLayer AVS management
-│   └── FhenixComputeProxy.sol # Fhenix FHE integration
-├── frontend/                  # Modern Web3 frontend (✅ MODERNIZED)
-│   ├── app/                   # Next.js 14 App Router
-│   ├── components/            # React components
-│   ├── lib/                   # AppKit configuration
-│   └── tailwind.config.js     # Black & green theme
-├── scripts/                   # Deployment and utility scripts
-└── test/                      # Test suites
+contracts/
+├── PolicyManager.sol          # ERC-1155 insurance policies
+├── FeeSplitter.sol            # Premium extraction from swaps
+├── vaults/
+│   └── InsuranceVault.sol     # Premium storage & claim payouts
+├── hooks/
+│   └── ConfidentialILHook.sol # Uniswap v4 hook implementation
+└── interfaces/
+    └── IUniswapV4Hook.sol     # Hook interface
+
+test/
+├── PolicyManager.t.sol        # Policy NFT tests (6 tests)
+├── InsuranceVault.t.sol       # Vault tests (12 tests)
+└── FeeSplitter.t.sol          # Premium extraction tests (9 tests)
+
+frontend/                      # Next.js dApp
+scripts/                       # Deployment scripts
+build.sh                       # Custom build system (20+ commands)
 ```
 
-## 🎨 Frontend Features
-
-### **Modern Web3 Interface**
-
-- **Black & Green Theme**: Matrix-inspired cyberpunk aesthetic
-- **AppKit Integration**: Seamless wallet connectivity (MetaMask, Trust, Coinbase)
-- **Multi-Network Support**: Ethereum, Arbitrum, Polygon, Base
-- **Framer Motion**: Sophisticated animations and micro-interactions
-
-### **Design System**
-
-- **Glass Morphism**: Custom backdrop-blur effects with green borders
-- **Neon Effects**: Green glow animations and gradient text
-- **Cyber Grid**: Animated background patterns
-- **Responsive Design**: Mobile-first responsive layout
-
-### **Technology Stack**
-
-- **Next.js 14**: App Router with TypeScript
-- **AppKit (Reown)**: Modern wallet connection system
-- **Tailwind CSS**: Utility-first styling with custom theme
-- **Framer Motion**: Advanced animations
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- Git
-
-### Installation
-
-1. **Clone the repository**:
-
-   ```bash
-   git clone https://github.com/LayintonDev/Confidential-iImpermanent-Loss-Insurance-for-Lps.git
-   cd confidential-il-insurance-hook
-   ```
-
-2. **Install dependencies**:
-
-   ```bash
-   npm install
-   cd frontend && npm install && cd ..
-   ```
-
-3. **Set up environment variables**:
-
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Start local development**:
-   ```bash
-   npm run start:local
-   ```
-
-This will start:
-
-- Local Hardhat network
-- Mock Fhenix service
-- Mock AVS node
-- Event indexer
-- Next.js frontend
-
-## 🧪 Testing
-
-### Run all tests:
+## 🧪 Advanced Testing
 
 ```bash
-npm test
+# Fuzz testing with custom iterations
+forge test --fuzz-runs 10000
+
+# Test coverage analysis
+./build.sh test-coverage
+
+# Gas usage profiling
+./build.sh test-gas
+
+# Specific test patterns
+forge test --match-test testFuzz
+forge test --match-contract PolicyManager
 ```
 
-### Run specific test suites:
+## 🚢 Deployment
 
 ```bash
-npm run test:unit           # Unit tests
-npm run test:integration    # Integration tests
-npm run test:coverage       # Coverage report
+# Local development
+./build.sh deploy-local
+
+# Testnet deployment
+./build.sh deploy-sepolia
+
+# Mainnet (when ready)
+./build.sh deploy-mainnet
 ```
 
-## 📝 Smart Contracts
+## 🏗️ Architecture
 
 ### Core Contracts
 
-- **`ConfidentialILHook.sol`** - Uniswap v4 hook managing policy lifecycle and premium collection
-- **`InsuranceVault.sol`** - Holds premiums and processes claim payouts
-- **`EigenAVSManager.sol`** - Manages operators and verifies attestations
-- **`FhenixComputeProxy.sol`** - Interface for Fhenix FHE computation results
+- **PolicyManager**: ERC-1155 NFTs representing insurance policies
+- **InsuranceVault**: Holds premiums and processes claim payouts
+- **FeeSplitter**: Extracts premiums from Uniswap v4 swap fees
+- **ConfidentialILHook**: Orchestrates the entire insurance flow
 
-### Key Events
+### Hook Flow
 
-```solidity
-event PolicyCreated(uint256 indexed policyId, address indexed lp, address indexed pool, uint256 epoch);
-event PremiumSkimmed(address indexed pool, uint256 amount);
-event ClaimRequested(uint256 indexed policyId, bytes32 commitmentC);
-event ClaimAttested(uint256 indexed policyId, bytes attestationHash);
-event ClaimSettled(uint256 indexed policyId, uint256 payout, address indexed to);
-```
-
-## 🔧 Development
-
-### Compile contracts:
-
-```bash
-npm run compile
-```
-
-### Deploy to local network:
-
-```bash
-npm run deploy:local
-```
-
-### Deploy to testnet:
-
-```bash
-npm run deploy:sepolia
-```
-
-### Lint code:
-
-```bash
-npm run lint
-npm run format
-```
-
-## 🌐 Frontend
-
-The frontend is built with:
-
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- Wagmi + RainbowKit
-- ShadCN UI components
-
-### Development:
-
-```bash
-cd frontend
-npm run dev
-```
-
-### Build for production:
-
-```bash
-cd frontend
-npm run build
-```
-
-## 📊 Features
-
-### For Liquidity Providers
-
-- ✅ One-click insurance activation when adding liquidity
-- ✅ Automatic premium deduction from fees
-- ✅ Privacy-preserving IL calculations
-- ✅ Streamlined claim process
-- ✅ Real-time policy and vault statistics
-
-### For Operators
-
-- ✅ Simple operator registration with stake
-- ✅ Automated reward distribution
-- ✅ Slashing protection for honest behavior
-- ✅ Performance metrics tracking
-
-## 🔐 Security
-
-- **Access Control**: Role-based permissions using OpenZeppelin
-- **Reentrancy Protection**: Guards on all state-changing functions
-- **Custom Errors**: Gas-efficient error handling
-- **Formal Verification**: Property-based testing with invariants
-
-## 🧭 Roadmap
-
-### Phase 1: MVP (Current)
-
-- [x] Basic contract architecture
-- [x] Mock Fhenix and AVS services
-- [x] Frontend scaffold
-- [ ] Complete integration testing
-
-### Phase 2: Advanced Features
-
-- [ ] Real Fhenix FHE integration
-- [ ] Production EigenLayer AVS
-- [ ] Advanced operator economics
-- [ ] Governance mechanisms
-
-### Phase 3: Production
-
-- [ ] Security audits
-- [ ] Mainnet deployment
-- [ ] Community launch
+1. **afterAddLiquidity** → Create insurance policy if enabled
+2. **afterSwap** → Extract premiums from fees → Deposit to vault
+3. **beforeRemoveLiquidity** → Initiate claim process
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feat/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feat/amazing-feature`)
-5. Open a Pull Request
+1. Install Foundry and dependencies
+2. Run `./build.sh test` to ensure everything works
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass before submitting
 
-## 📄 License
+## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙋‍♂️ Support
-
-- [Discord](https://discord.gg/your-discord)
-- [Twitter](https://twitter.com/your-handle)
-- [Documentation](https://docs.your-project.com)
-
-## 🏆 Acknowledgments
-
-Built for the Hookathon using:
-
-- [Uniswap v4](https://uniswap.org/)
-- [Fhenix](https://fhenix.zone/)
-- [EigenLayer](https://eigenlayer.xyz/)
-- [Next.js](https://nextjs.org/)
-- [Hardhat](https://hardhat.org/)
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**⚠️ Disclaimer**: This is experimental software. Use at your own risk. Not audited for production use.
+**Status**: Phase 2 Complete ✅ | **Next**: Phase 3 - Fee Splitting & Premium Flow

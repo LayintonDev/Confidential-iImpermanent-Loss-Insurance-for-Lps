@@ -1,0 +1,88 @@
+[profile.default]
+# Solidity version
+solc = "0.8.26"
+evm_version = "cancun"
+
+# Source code organization
+src = "contracts"
+out = "out"
+libs = ["lib"]
+
+# Testing configuration
+test = "test"
+cache_path = "cache_forge"
+
+# Remappings for better import paths
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@uniswap/=lib/v4-core/src/",
+]
+
+# Optimization settings
+optimizer = true
+optimizer_runs = 200
+via_ir = false
+
+# Gas reporting
+gas_reports = ["*"]
+gas_limit = 9223372036854775807
+
+# Auto-detect tests
+auto_detect_solc = false
+offline = false
+
+# Build settings
+build_info = true
+extra_output = ["storageLayout", "metadata"]
+
+# Additional settings for better development experience
+fs_permissions = [
+    { access = "read-write", path = "./" },
+    { access = "read", path = "./lib/" },
+]
+
+# Formatter settings
+line_length = 100
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+
+# Fuzz testing configuration
+[fuzz]
+runs = 1000
+max_test_rejects = 65536
+seed = '0x1'
+dictionary_weight = 40
+include_storage = true
+include_push_bytes = true
+
+# Invariant testing
+[invariant]
+runs = 256
+depth = 15
+fail_on_revert = false
+call_override = false
+dictionary_weight = 80
+include_storage = true
+include_push_bytes = true
+
+# RPC endpoints for forking and deployment
+[rpc_endpoints]
+mainnet = "https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
+sepolia = "https://eth-sepolia.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
+polygon = "https://polygon-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
+arbitrum = "https://arb-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
+optimism = "https://opt-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
+base = "https://base-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
+anvil = "http://localhost:8545"
+localhost = "http://localhost:8545"
+
+# Etherscan verification
+[etherscan]
+mainnet = { key = "${ETHERSCAN_API_KEY}" }
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
+polygon = { key = "${POLYGONSCAN_API_KEY}" }
+arbitrum = { key = "${ARBISCAN_API_KEY}" }
+optimism = { key = "${OPTIMISTIC_ETHERSCAN_API_KEY}" }
+base = { key = "${BASESCAN_API_KEY}" }

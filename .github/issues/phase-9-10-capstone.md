@@ -49,10 +49,10 @@ const deploymentConfig = {
 echo "🚀 Deploying Confidential IL Insurance Hook to $NETWORK"
 
 # Deploy core contracts
-npx hardhat run scripts/deploy/01-deploy-core.ts --network $NETWORK
-npx hardhat run scripts/deploy/02-configure-operators.ts --network $NETWORK
-npx hardhat run scripts/deploy/03-setup-governance.ts --network $NETWORK
-npx hardhat run scripts/deploy/04-verify-deployment.ts --network $NETWORK
+forge script scripts/deploy/01-deploy-core.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+forge script scripts/deploy/02-configure-operators.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+forge script scripts/deploy/03-setup-governance.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+forge script scripts/deploy/04-verify-deployment.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY
 
 echo "✅ Deployment complete. Contracts verified on $EXPLORER"
 ```
@@ -71,8 +71,9 @@ echo "✅ Deployment complete. Contracts verified on $EXPLORER"
 # docker-compose.yml for complete demo stack
 version: "3.8"
 services:
-  hardhat-node:
-    image: hardhat-node:latest
+  anvil-node:
+    image: foundryup/foundry:latest
+    command: anvil --host 0.0.0.0
     ports: ["8545:8545"]
 
   fhenix-service:
@@ -265,7 +266,7 @@ submission-package/
 
 ## Prerequisites
 
-- Node.js 18+, Hardhat, Git
+- Node.js 18+, Foundry, Git
 
 ## 5-Minute Setup
 

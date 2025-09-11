@@ -87,7 +87,7 @@ Implement the PolicyManager (ERC-1155), InsuranceVault core functionality, and b
 
 - [ ] All contracts compile without warnings
 - [ ] Unit test coverage ≥80% for implemented functions
-- [ ] Frontend can successfully mint a policy on local hardhat network
+- [ ] Frontend can successfully mint a policy on local Foundry network
 - [ ] Premium skimming works in afterSwap callback
 - [ ] All required events are emitted with correct data
 - [ ] No security vulnerabilities in static analysis
@@ -95,9 +95,9 @@ Implement the PolicyManager (ERC-1155), InsuranceVault core functionality, and b
 ## Dependencies
 
 - Phase 1 completion (bootstrap)
-- OpenZeppelin contracts
+- OpenZeppelin contracts (as Foundry library)
 - Uniswap v4 interfaces
-- Hardhat network for testing
+- Foundry for testing and development
 
 ## Estimated Time
 

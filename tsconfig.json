@@ -28,9 +28,6 @@
   },
   "include": [
     "./scripts/**/*",
-    "./test/**/*",
-    "./typechain-types/**/*",
-    "./hardhat.config.ts",
     "./avs/**/*",
     "./fhenix-service/**/*"
   ],
@@ -38,9 +35,10 @@
     "node_modules",
     "artifacts",
     "cache",
-    "frontend"
-  ],
-  "ts-node": {
-    "require": ["hardhat/register"]
-  }
+    "cache_forge",
+    "out",
+    "frontend",
+    "lib",
+    "test"
+  ]
 }

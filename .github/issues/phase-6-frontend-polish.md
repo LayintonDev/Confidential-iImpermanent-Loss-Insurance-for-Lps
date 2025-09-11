@@ -20,7 +20,7 @@ Complete the Next.js frontend with real transaction flows, comprehensive UI for 
 #### WalletConnect.tsx
 
 - [ ] RainbowKit integration with custom styling
-- [ ] Network switching support (local hardhat, testnets)
+- [ ] Network switching support (local anvil, testnets)
 - [ ] Connection state management
 - [ ] Error handling for wallet connection issues
 - [ ] Support for multiple wallet types
@@ -224,7 +224,7 @@ export const useConfidentialILHook = () => {
 
 ## Definition of Done
 
-- [ ] All major user flows work end-to-end on local hardhat network
+- [ ] All major user flows work end-to-end on local anvil network
 - [ ] Real transactions can be signed and broadcasted
 - [ ] UI properly displays all attestation and payout data
 - [ ] Responsive design works across all device sizes
