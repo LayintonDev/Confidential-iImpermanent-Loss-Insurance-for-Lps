@@ -1,3 +1,4 @@
+import {PremiumMath} from "../contracts/libraries/PremiumMath.sol";
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
@@ -12,6 +13,139 @@ import {PolicyManager} from "../contracts/PolicyManager.sol";
  * @dev Tests premium extraction and fee splitting logic
  */
 contract FeeSplitterTest is Test {
+
+    function testEstimatePremiumMatchesLibrary() public {
+        // Initialize pool
+        vm.prank(hook);
+        feeSplitter.initializePool(pool1, 1000, 2000);
+
+        // Simulate fee growth
+        uint256 newFeeGrowth0 = 1100;
+        uint256 newFeeGrowth1 = 2200;
+        uint256 premiumRate = feeSplitter.getPremiumRate(pool1);
+
+        // Use contract's estimatePremium
+        uint256 contractEstimate = feeSplitter.estimatePremium(pool1, newFeeGrowth0, newFeeGrowth1);
+
+        // Use library directly
+        uint256 libEstimate = PremiumMath.calculatePremium(1000, 2000, newFeeGrowth0, newFeeGrowth1, premiumRate);
+
+        assertEq(contractEstimate, libEstimate, "estimatePremium should match PremiumMath");
+    }
+
+    function testEstimatePremiumUninitializedPool() public {
+        // Should return 0 for uninitialized pool
+        uint256 estimate = feeSplitter.estimatePremium(pool1, 1000, 2000);
+        assertEq(estimate, 0);
+    }
+
+    function testPremiumMathHandlesZeroDelta() public {
+        // No fee growth, should be zero premium
+        uint256 premium = PremiumMath.calculatePremium(1000, 2000, 1000, 2000, 3);
+        assertEq(premium, 0);
+    }
+
+    function testPremiumMathHandlesNonZeroDelta() public {
+        // Fee growth, should calculate correct premium
+        uint256 premium = PremiumMath.calculatePremium(1000, 2000, 1100, 2200, 3);
+        // delta0 = 100, delta1 = 200, avg = 150, rate = 3 bps
+        // premium = 150 * 3 / 10000 = 0.045 -> truncated to 0 (uint256)
+        assertEq(premium, 0);
+
+        // Use higher rate to get nonzero
+        premium = PremiumMath.calculatePremium(1000, 2000, 1100, 2200, 1000); // 10%
+        // premium = 150 * 1000 / 10000 = 15
+        assertEq(premium, 15);
+    }
+
+    function testExtractPremiumInitializesPoolOnFirstCall() public {
+        uint256 feeGrowth0 = 1000;
+        uint256 feeGrowth1 = 2000;
+
+        vm.prank(hook);
+        uint256 premium = feeSplitter.extractPremium(pool1, feeGrowth0, feeGrowth1);
+
+        // First call should initialize and return 0 premium
+        assertEq(premium, 0);
+        assertTrue(feeSplitter.poolInitialized(pool1));
+        assertEq(feeSplitter.getPremiumRate(pool1), 3); // DEFAULT_PREMIUM_BPS
+    }
+
+    function testExtractPremiumCalculatesCorrectAmount() public {
+        // Initialize pool
+        vm.prank(hook);
+        feeSplitter.extractPremium(pool1, 1000, 2000);
+
+        // Set higher premium rate for testing
+        vm.prank(admin);
+        feeSplitter.setPremiumRate(pool1, 1000); // 10%
+
+        // Extract premium with fee growth
+        vm.prank(hook);
+        uint256 premium = feeSplitter.extractPremium(pool1, 1100, 2200);
+
+        // Expected: delta0=100, delta1=200, avg=150, rate=10% => 150*1000/10000=15
+        assertEq(premium, 15);
+    }
+
+    function testExtractPremiumRequiresHookRole() public {
+        vm.prank(admin);
+        vm.expectRevert();
+        feeSplitter.extractPremium(pool1, 1000, 2000);
+    }
+
+    function testExtractPremiumRejectsInvalidPool() public {
+        vm.prank(hook);
+        vm.expectRevert(abi.encodeWithSelector(FeeSplitter.InvalidPool.selector));
+        feeSplitter.extractPremium(address(0), 1000, 2000);
+    }
+
+    function testSetPremiumRateRejectsHighRates() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(FeeSplitter.InvalidAmount.selector));
+        feeSplitter.setPremiumRate(pool1, 1001); // > 1000 (10%)
+    }
+
+    function testUpdateInsuranceVaultRejectsZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(FeeSplitter.InvalidAmount.selector));
+        feeSplitter.updateInsuranceVault(address(0));
+    }
+
+    function testExtractPremiumWithLargeFeeGrowth() public {
+        // Test with large numbers to check for overflow
+        uint256 largeFeeGrowth0 = 2**128 - 1000;
+        uint256 largeFeeGrowth1 = 2**128 - 2000;
+
+        vm.prank(hook);
+        feeSplitter.extractPremium(pool1, largeFeeGrowth0, largeFeeGrowth1);
+
+        // Should not revert and should initialize correctly
+        assertTrue(feeSplitter.poolInitialized(pool1));
+    }
+
+    function testConsecutivePremiumExtractions() public {
+        // Initialize
+        vm.prank(hook);
+        uint256 premium1 = feeSplitter.extractPremium(pool1, 1000, 2000);
+        assertEq(premium1, 0); // First call initializes
+
+        // Set premium rate
+        vm.prank(admin);
+        feeSplitter.setPremiumRate(pool1, 100); // 1%
+
+        // Multiple extractions
+        vm.startPrank(hook);
+        uint256 premium2 = feeSplitter.extractPremium(pool1, 1100, 2100);
+        uint256 premium3 = feeSplitter.extractPremium(pool1, 1200, 2200);
+        uint256 premium4 = feeSplitter.extractPremium(pool1, 1200, 2200); // No growth
+        vm.stopPrank();
+
+        // Verify calculations
+        assertEq(premium2, 100 * 100 / 10000); // (100+100)/2 * 1% = 1
+        assertEq(premium3, 100 * 100 / 10000); // (100+100)/2 * 1% = 1  
+        assertEq(premium4, 0); // No fee growth = no premium
+    }
     FeeSplitter public feeSplitter;
     InsuranceVault public vault;
     PolicyManager public policyManager;

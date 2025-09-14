@@ -10,7 +10,7 @@ contract EigenAVSManager {
     // =============================================================================
     //                               CUSTOM ERRORS
     // =============================================================================
-    
+
     error InvalidOperator();
     error InvalidSignature();
     error InsufficientStake();
@@ -21,63 +21,58 @@ contract EigenAVSManager {
     // =============================================================================
     //                                  EVENTS
     // =============================================================================
-    
+
     /// @notice Emitted when an attestation is submitted
-    event AttestationSubmitted(
-        uint256 indexed policyId, 
-        bytes fhenixSig, 
-        bytes ivsSig, 
-        uint256 payout
-    );
-    
+    event AttestationSubmitted(uint256 indexed policyId, bytes fhenixSig, bytes ivsSig, uint256 payout);
+
     /// @notice Emitted when a claim is settled
     event ClaimSettled(uint256 indexed policyId, uint256 payout, address indexed to);
-    
+
     /// @notice Emitted when an operator is slashed
     event OperatorSlashed(address indexed operator, uint256 amount, string reason);
-    
+
     /// @notice Emitted when an operator registers
     event OperatorRegistered(address indexed operator, uint256 stake);
 
     // =============================================================================
     //                                STORAGE
     // =============================================================================
-    
+
     /// @notice Information about each operator
     struct OperatorInfo {
         uint256 stake;
         bool isActive;
         uint256 slashingHistory;
     }
-    
+
     /// @notice Mapping of operator address to operator information
     mapping(address => OperatorInfo) public operators;
-    
+
     /// @notice Array of all registered operator addresses
     address[] public operatorList;
-    
+
     /// @notice Minimum stake required for operators
     uint256 public minimumStake;
-    
+
     /// @notice Threshold for signature verification (M-of-N)
     uint256 public signatureThreshold;
-    
+
     /// @notice Address of the InsuranceVault contract
     address public insuranceVault;
-    
+
     /// @notice Address of the FhenixComputeProxy contract
     address public fhenixProxy;
-    
+
     /// @notice Contract owner
     address public owner;
-    
+
     /// @notice Mapping to track settled policies
     mapping(uint256 => bool) public settledPolicies;
 
     // =============================================================================
     //                               MODIFIERS
     // =============================================================================
-    
+
     modifier onlyOwner() {
         if (msg.sender != owner) {
             revert UnauthorizedCaller();
@@ -88,13 +83,8 @@ contract EigenAVSManager {
     // =============================================================================
     //                               CONSTRUCTOR
     // =============================================================================
-    
-    constructor(
-        address _insuranceVault,
-        address _fhenixProxy,
-        uint256 _minimumStake,
-        uint256 _signatureThreshold
-    ) {
+
+    constructor(address _insuranceVault, address _fhenixProxy, uint256 _minimumStake, uint256 _signatureThreshold) {
         insuranceVault = _insuranceVault;
         fhenixProxy = _fhenixProxy;
         minimumStake = _minimumStake;
@@ -113,12 +103,9 @@ contract EigenAVSManager {
      * @param ivsSig The aggregated IVS operator signatures
      * @param payout The computed payout amount
      */
-    function submitAttestation(
-        uint256 policyId,
-        bytes calldata fhenixSig,
-        bytes calldata ivsSig,
-        uint256 payout
-    ) external {
+    function submitAttestation(uint256 policyId, bytes calldata fhenixSig, bytes calldata ivsSig, uint256 payout)
+        external
+    {
         if (settledPolicies[policyId]) {
             revert PolicyAlreadySettled();
         }
@@ -156,11 +143,7 @@ contract EigenAVSManager {
             operators[msg.sender].stake += msg.value;
         } else {
             // New operator registration
-            operators[msg.sender] = OperatorInfo({
-                stake: msg.value,
-                isActive: true,
-                slashingHistory: 0
-            });
+            operators[msg.sender] = OperatorInfo({stake: msg.value, isActive: true, slashingHistory: 0});
             operatorList.push(msg.sender);
         }
 
@@ -173,11 +156,7 @@ contract EigenAVSManager {
      * @param amount The amount to slash
      * @param reason The reason for slashing
      */
-    function slashOperator(
-        address operator,
-        uint256 amount,
-        string calldata reason
-    ) external onlyOwner {
+    function slashOperator(address operator, uint256 amount, string calldata reason) external onlyOwner {
         if (!operators[operator].isActive) {
             revert InvalidOperator();
         }
@@ -208,11 +187,11 @@ contract EigenAVSManager {
      * @param payout The payout amount
      * @return bool Whether the signature is valid
      */
-    function _verifyFhenixSignature(
-        uint256 policyId,
-        bytes calldata signature,
-        uint256 payout
-    ) internal pure returns (bool) {
+    function _verifyFhenixSignature(uint256 policyId, bytes calldata signature, uint256 payout)
+        internal
+        pure
+        returns (bool)
+    {
         // TODO: Implement actual Fhenix signature verification
         // For MVP, we'll do basic validation
         return signature.length > 0 && policyId > 0 && payout > 0;
@@ -225,18 +204,16 @@ contract EigenAVSManager {
      * @param payout The payout amount
      * @return bool Whether threshold is met
      */
-    function _verifyThreshold(
-        uint256 policyId,
-        bytes calldata signatures,
-        uint256 payout
-    ) internal view returns (bool) {
+    function _verifyThreshold(uint256 policyId, bytes calldata signatures, uint256 payout)
+        internal
+        view
+        returns (bool)
+    {
         // TODO: Implement actual BLS signature verification
         // For MVP, we'll do basic validation and assume threshold is met
         uint256 activeOperators = _getActiveOperatorCount();
-        return signatures.length >= signatureThreshold * 65 && // 65 bytes per ECDSA signature
-               activeOperators >= signatureThreshold &&
-               policyId > 0 && 
-               payout > 0;
+        return signatures.length >= signatureThreshold * 65 // 65 bytes per ECDSA signature
+            && activeOperators >= signatureThreshold && policyId > 0 && payout > 0;
     }
 
     /**
@@ -254,7 +231,7 @@ contract EigenAVSManager {
     // =============================================================================
     //                             VIEW FUNCTIONS
     // =============================================================================
-    
+
     /**
      * @notice Get operator information
      * @param operator The operator address
@@ -263,7 +240,7 @@ contract EigenAVSManager {
     function getOperatorInfo(address operator) external view returns (OperatorInfo memory info) {
         return operators[operator];
     }
-    
+
     /**
      * @notice Get the total number of registered operators
      * @return count The total number of operators
@@ -271,7 +248,7 @@ contract EigenAVSManager {
     function getOperatorCount() external view returns (uint256 count) {
         return operatorList.length;
     }
-    
+
     /**
      * @notice Get the number of active operators
      * @return count The number of active operators
@@ -283,7 +260,7 @@ contract EigenAVSManager {
     // =============================================================================
     //                             ADMIN FUNCTIONS
     // =============================================================================
-    
+
     /**
      * @notice Update the signature threshold
      * @param newThreshold The new threshold value
@@ -291,7 +268,7 @@ contract EigenAVSManager {
     function updateThreshold(uint256 newThreshold) external onlyOwner {
         signatureThreshold = newThreshold;
     }
-    
+
     /**
      * @notice Update the minimum stake requirement
      * @param newMinimum The new minimum stake

@@ -19,7 +19,7 @@ Complete the Next.js frontend with real transaction flows, comprehensive UI for 
 
 #### WalletConnect.tsx
 
-- [ ] RainbowKit integration with custom styling
+- [ ] appkit integration with custom styling
 - [ ] Network switching support (local anvil, testnets)
 - [ ] Connection state management
 - [ ] Error handling for wallet connection issues

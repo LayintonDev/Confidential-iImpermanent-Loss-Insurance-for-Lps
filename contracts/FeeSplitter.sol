@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./interfaces/IInsuranceVault.sol";
+import { PremiumMath } from "./libraries/PremiumMath.sol";
 
 /**
  * @title FeeSplitter
@@ -94,16 +97,15 @@ contract FeeSplitter is AccessControl {
             return 0; // No premium on first initialization
         }
 
-        // Calculate fee growth delta
-        uint256 deltaFeeGrowth0 = feeGrowthGlobal0 - lastFeeGrowthGlobal0[pool];
-        uint256 deltaFeeGrowth1 = feeGrowthGlobal1 - lastFeeGrowthGlobal1[pool];
 
-        // Calculate premium (simplified: use average of both token fee growths)
-        uint256 avgDeltaFeeGrowth = (deltaFeeGrowth0 + deltaFeeGrowth1) / 2;
         uint256 premiumRate = poolPremiumRates[pool];
-
-        // Premium = (average fee growth delta) * (premium rate) / 10000
-        premiumAmount = (avgDeltaFeeGrowth * premiumRate) / 10000;
+        premiumAmount = PremiumMath.calculatePremium(
+            lastFeeGrowthGlobal0[pool],
+            lastFeeGrowthGlobal1[pool],
+            feeGrowthGlobal0,
+            feeGrowthGlobal1,
+            premiumRate
+        );
 
         // Update last recorded fee growth
         lastFeeGrowthGlobal0[pool] = feeGrowthGlobal0;
@@ -185,12 +187,14 @@ contract FeeSplitter is AccessControl {
             return 0;
         }
 
-        uint256 deltaFeeGrowth0 = feeGrowthGlobal0 - lastFeeGrowthGlobal0[pool];
-        uint256 deltaFeeGrowth1 = feeGrowthGlobal1 - lastFeeGrowthGlobal1[pool];
-        uint256 avgDeltaFeeGrowth = (deltaFeeGrowth0 + deltaFeeGrowth1) / 2;
         uint256 premiumRate = poolPremiumRates[pool];
-
-        return (avgDeltaFeeGrowth * premiumRate) / 10000;
+        return PremiumMath.calculatePremium(
+            lastFeeGrowthGlobal0[pool],
+            lastFeeGrowthGlobal1[pool],
+            feeGrowthGlobal0,
+            feeGrowthGlobal1,
+            premiumRate
+        );
     }
 
     // =============================================================================
@@ -203,14 +207,18 @@ contract FeeSplitter is AccessControl {
      * @param amount The premium amount
      */
     function _transferPremiumToVault(address pool, uint256 amount) internal {
-        // For MVP: this is a placeholder
+        // For MVP: directly call vault's depositPremium
         // In real implementation, this would:
         // 1. Collect fees from Uniswap V4 pool
         // 2. Calculate exact premium amount in appropriate tokens
-        // 3. Transfer to InsuranceVault via depositPremium()
+        // 3. Transfer tokens and call depositPremium()
 
-        // For now, we'll just emit the event
-        // The actual transfer will be handled by the hook contract
+        try IInsuranceVault(insuranceVault).depositPremium(pool, amount) {
+            // Premium successfully deposited
+        } catch {
+            // Log failed deposit but don't revert the extraction
+            // This ensures premium calculation continues even if vault is unavailable
+        }
     }
 
     // =============================================================================

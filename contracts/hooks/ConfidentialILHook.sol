@@ -243,14 +243,19 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
     {
         // Only skim premiums from whitelisted pools
         if (whitelistedPools[pool]) {
-            // Extract premium using FeeSplitter
-            uint256 premiumAmount =
-                feeSplitter.extractPremium(pool, uint256(feeGrowthGlobal0), uint256(feeGrowthGlobal1));
-
-            // Deposit premium to vault if amount > 0
-            if (premiumAmount > 0) {
-                insuranceVault.depositPremium(pool, premiumAmount);
-                emit PremiumSkimmed(pool, premiumAmount);
+            try feeSplitter.extractPremium(pool, uint256(feeGrowthGlobal0), uint256(feeGrowthGlobal1)) returns (uint256 premiumAmount) {
+                // Deposit premium to vault if amount > 0
+                if (premiumAmount > 0) {
+                    try insuranceVault.depositPremium(pool, premiumAmount) {
+                        emit PremiumSkimmed(pool, premiumAmount);
+                    } catch {
+                        // Log the failed premium deposit but don't revert the swap
+                        emit PremiumSkimmed(pool, 0); // Indicates failed deposit
+                    }
+                }
+            } catch {
+                // If premium extraction fails, continue with the swap
+                // This ensures that swap functionality is not compromised
             }
         }
 

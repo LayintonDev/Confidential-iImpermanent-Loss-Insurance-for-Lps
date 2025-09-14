@@ -10,7 +10,7 @@ contract FhenixComputeProxy {
     // =============================================================================
     //                               CUSTOM ERRORS
     // =============================================================================
-    
+
     error UnauthorizedWorker();
     error InvalidAttestation();
     error PolicyAlreadyAttested();
@@ -19,49 +19,49 @@ contract FhenixComputeProxy {
     // =============================================================================
     //                                  EVENTS
     // =============================================================================
-    
+
     /// @notice Emitted when a Fhenix computation result is submitted
     event ClaimAttested(uint256 indexed policyId, bytes attestationHash);
-    
+
     /// @notice Emitted when a Fhenix worker is authorized
     event WorkerAuthorized(address indexed worker, string workerId);
-    
+
     /// @notice Emitted when a Fhenix worker is deauthorized
     event WorkerDeauthorized(address indexed worker);
 
     // =============================================================================
     //                                STORAGE
     // =============================================================================
-    
+
     /// @notice Mapping of policy ID to attestation hash
     mapping(uint256 => bytes32) public attestationHashes;
-    
+
     /// @notice Mapping of policy ID to whether it has been attested
     mapping(uint256 => bool) public attested;
-    
+
     /// @notice Mapping of authorized Fhenix worker addresses
     mapping(address => bool) public authorizedWorkers;
-    
+
     /// @notice Mapping of worker address to worker ID string
     mapping(address => string) public workerIds;
-    
+
     /// @notice Contract owner
     address public owner;
-    
+
     /// @notice Total number of attestations processed
     uint256 public totalAttestations;
 
     // =============================================================================
     //                               MODIFIERS
     // =============================================================================
-    
+
     modifier onlyFhenixWorker() {
         if (!authorizedWorkers[msg.sender]) {
             revert UnauthorizedWorker();
         }
         _;
     }
-    
+
     modifier onlyOwner() {
         if (msg.sender != owner) {
             revert UnauthorizedWorker();
@@ -72,7 +72,7 @@ contract FhenixComputeProxy {
     // =============================================================================
     //                               CONSTRUCTOR
     // =============================================================================
-    
+
     constructor() {
         owner = msg.sender;
     }
@@ -87,11 +87,10 @@ contract FhenixComputeProxy {
      * @param attestation The FHE computation attestation data
      * @param signature The Fhenix worker's signature on the attestation
      */
-    function submitFhenixResult(
-        uint256 policyId,
-        bytes calldata attestation,
-        bytes calldata signature
-    ) external onlyFhenixWorker {
+    function submitFhenixResult(uint256 policyId, bytes calldata attestation, bytes calldata signature)
+        external
+        onlyFhenixWorker
+    {
         if (attested[policyId]) {
             revert PolicyAlreadyAttested();
         }
@@ -121,23 +120,21 @@ contract FhenixComputeProxy {
      * @param signature The worker's signature
      * @return bool Whether the signature is valid
      */
-    function _verifyWorkerSignature(
-        uint256 policyId,
-        bytes calldata attestation,
-        bytes calldata signature
-    ) internal view returns (bool) {
+    function _verifyWorkerSignature(uint256 policyId, bytes calldata attestation, bytes calldata signature)
+        internal
+        view
+        returns (bool)
+    {
         // TODO: Implement proper ECDSA signature verification
         // For MVP, we'll do basic validation
-        return signature.length == 65 && // Standard ECDSA signature length
-               attestation.length > 0 &&
-               policyId > 0 &&
-               authorizedWorkers[msg.sender];
+        return signature.length == 65 // Standard ECDSA signature length
+            && attestation.length > 0 && policyId > 0 && authorizedWorkers[msg.sender];
     }
 
     // =============================================================================
     //                             VIEW FUNCTIONS
     // =============================================================================
-    
+
     /**
      * @notice Get the attestation hash for a policy
      * @param policyId The policy ID to query
@@ -146,7 +143,7 @@ contract FhenixComputeProxy {
     function getAttestationHash(uint256 policyId) external view returns (bytes32 hash) {
         return attestationHashes[policyId];
     }
-    
+
     /**
      * @notice Check if a policy has been attested
      * @param policyId The policy ID to check
@@ -155,7 +152,7 @@ contract FhenixComputeProxy {
     function isAttested(uint256 policyId) external view returns (bool) {
         return attested[policyId];
     }
-    
+
     /**
      * @notice Check if an address is an authorized worker
      * @param worker The address to check
@@ -164,7 +161,7 @@ contract FhenixComputeProxy {
     function isAuthorizedWorker(address worker) external view returns (bool) {
         return authorizedWorkers[worker];
     }
-    
+
     /**
      * @notice Get the worker ID for an address
      * @param worker The worker address
@@ -177,7 +174,7 @@ contract FhenixComputeProxy {
     // =============================================================================
     //                             ADMIN FUNCTIONS
     // =============================================================================
-    
+
     /**
      * @notice Authorize a Fhenix worker
      * @param worker The worker address to authorize
@@ -188,7 +185,7 @@ contract FhenixComputeProxy {
         workerIds[worker] = workerId;
         emit WorkerAuthorized(worker, workerId);
     }
-    
+
     /**
      * @notice Deauthorize a Fhenix worker
      * @param worker The worker address to deauthorize
@@ -198,7 +195,7 @@ contract FhenixComputeProxy {
         delete workerIds[worker];
         emit WorkerDeauthorized(worker);
     }
-    
+
     /**
      * @notice Emergency function to clear a policy attestation (admin only)
      * @param policyId The policy ID to clear

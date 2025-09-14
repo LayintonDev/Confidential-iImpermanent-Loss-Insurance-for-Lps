@@ -15,11 +15,7 @@ interface IUniswapV4Hook {
      * @param data Additional data passed to the hook
      * @return bytes4 The function selector to confirm the hook processed the call
      */
-    function beforeInitialize(
-        address pool,
-        uint160 sqrtPriceX96,
-        bytes calldata data
-    ) external returns (bytes4);
+    function beforeInitialize(address pool, uint160 sqrtPriceX96, bytes calldata data) external returns (bytes4);
 
     /**
      * @notice Called after a pool is initialized
@@ -28,11 +24,7 @@ interface IUniswapV4Hook {
      * @param data Additional data passed to the hook
      * @return bytes4 The function selector to confirm the hook processed the call
      */
-    function afterInitialize(
-        address pool,
-        uint160 sqrtPriceX96,
-        bytes calldata data
-    ) external returns (bytes4);
+    function afterInitialize(address pool, uint160 sqrtPriceX96, bytes calldata data) external returns (bytes4);
 
     /**
      * @notice Called before liquidity is added to a pool
@@ -43,13 +35,9 @@ interface IUniswapV4Hook {
      * @param data Additional data passed to the hook
      * @return bytes4 The function selector to confirm the hook processed the call
      */
-    function beforeAddLiquidity(
-        address pool,
-        address lp,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external returns (bytes4);
+    function beforeAddLiquidity(address pool, address lp, uint256 amount0, uint256 amount1, bytes calldata data)
+        external
+        returns (bytes4);
 
     /**
      * @notice Called after liquidity is added to a pool
@@ -60,13 +48,9 @@ interface IUniswapV4Hook {
      * @param data Additional data passed to the hook
      * @return bytes4 The function selector to confirm the hook processed the call
      */
-    function afterAddLiquidity(
-        address pool,
-        address lp,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external returns (bytes4);
+    function afterAddLiquidity(address pool, address lp, uint256 amount0, uint256 amount1, bytes calldata data)
+        external
+        returns (bytes4);
 
     /**
      * @notice Called before liquidity is removed from a pool
@@ -75,11 +59,7 @@ interface IUniswapV4Hook {
      * @param data Additional data passed to the hook
      * @return bytes4 The function selector to confirm the hook processed the call
      */
-    function beforeRemoveLiquidity(
-        address pool,
-        uint256 policyId,
-        bytes calldata data
-    ) external returns (bytes4);
+    function beforeRemoveLiquidity(address pool, uint256 policyId, bytes calldata data) external returns (bytes4);
 
     /**
      * @notice Called after liquidity is removed from a pool
@@ -90,13 +70,9 @@ interface IUniswapV4Hook {
      * @param data Additional data passed to the hook
      * @return bytes4 The function selector to confirm the hook processed the call
      */
-    function afterRemoveLiquidity(
-        address pool,
-        address lp,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external returns (bytes4);
+    function afterRemoveLiquidity(address pool, address lp, uint256 amount0, uint256 amount1, bytes calldata data)
+        external
+        returns (bytes4);
 
     /**
      * @notice Called after a swap occurs in the pool
@@ -106,10 +82,7 @@ interface IUniswapV4Hook {
      * @param data Additional data passed to the hook
      * @return bytes4 The function selector to confirm the hook processed the call
      */
-    function afterSwap(
-        address pool,
-        uint128 feeGrowthGlobal0,
-        uint128 feeGrowthGlobal1,
-        bytes calldata data
-    ) external returns (bytes4);
+    function afterSwap(address pool, uint128 feeGrowthGlobal0, uint128 feeGrowthGlobal1, bytes calldata data)
+        external
+        returns (bytes4);
 }
