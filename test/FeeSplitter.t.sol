@@ -1,5 +1,6 @@
 import {PremiumMath} from "../contracts/libraries/PremiumMath.sol";
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.26;
 
 import {Test, console} from "forge-std/Test.sol";
@@ -13,7 +14,6 @@ import {PolicyManager} from "../contracts/PolicyManager.sol";
  * @dev Tests premium extraction and fee splitting logic
  */
 contract FeeSplitterTest is Test {
-
     function testEstimatePremiumMatchesLibrary() public {
         // Initialize pool
         vm.prank(hook);
@@ -114,8 +114,8 @@ contract FeeSplitterTest is Test {
 
     function testExtractPremiumWithLargeFeeGrowth() public {
         // Test with large numbers to check for overflow
-        uint256 largeFeeGrowth0 = 2**128 - 1000;
-        uint256 largeFeeGrowth1 = 2**128 - 2000;
+        uint256 largeFeeGrowth0 = 2 ** 128 - 1000;
+        uint256 largeFeeGrowth1 = 2 ** 128 - 2000;
 
         vm.prank(hook);
         feeSplitter.extractPremium(pool1, largeFeeGrowth0, largeFeeGrowth1);
@@ -143,9 +143,10 @@ contract FeeSplitterTest is Test {
 
         // Verify calculations
         assertEq(premium2, 100 * 100 / 10000); // (100+100)/2 * 1% = 1
-        assertEq(premium3, 100 * 100 / 10000); // (100+100)/2 * 1% = 1  
+        assertEq(premium3, 100 * 100 / 10000); // (100+100)/2 * 1% = 1
         assertEq(premium4, 0); // No fee growth = no premium
     }
+
     FeeSplitter public feeSplitter;
     InsuranceVault public vault;
     PolicyManager public policyManager;

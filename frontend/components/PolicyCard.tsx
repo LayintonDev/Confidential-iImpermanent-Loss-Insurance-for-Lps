@@ -1,213 +1,435 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Shield, Clock, DollarSign, Target, AlertTriangle } from "lucide-react";
-
-interface PolicyData {
-  policyId: number;
-  lp: string;
-  pool: string;
-  params: {
-    deductibleBps: number;
-    capBps: number;
-    premiumBps: number;
-    duration: number;
-  };
-  createdAt: number;
-  epoch: number;
-  active: boolean;
-  entryCommit: string;
-}
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
+import {
+  Shield,
+  Clock,
+  DollarSign,
+  Target,
+  AlertTriangle,
+  ExternalLink,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { format, formatDistanceToNow } from "date-fns";
+import { usePolicyEvents } from "@/lib/events";
+import { usePolicyManager, useInsuranceVault } from "@/lib/contracts";
+import { PolicyState } from "@/lib/store";
 
 interface PolicyCardProps {
-  policy: PolicyData;
-  premiumPaid?: string;
-  potentialPayout?: string;
-  onClaimRequest?: (policyId: number) => void;
-  onBurnPolicy?: (policyId: number) => void;
-  isClaimable?: boolean;
+  policy: PolicyState;
+  onClaimRequest?: (policyId: string) => void;
+  onBurnPolicy?: (policyId: string) => void;
+  onViewDetails?: (policyId: string) => void;
   isLoading?: boolean;
+  compact?: boolean;
+  showActions?: boolean;
 }
 
 export default function PolicyCard({
   policy,
-  premiumPaid = "0.0023",
-  potentialPayout = "1.24",
   onClaimRequest,
   onBurnPolicy,
-  isClaimable = false,
+  onViewDetails,
   isLoading = false,
+  compact = false,
+  showActions = true,
 }: PolicyCardProps) {
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDetails, setShowDetails] = useState(!compact);
+
+  // Real-time event monitoring
+  const policyEvents = usePolicyEvents(BigInt(policy.id));
+  const { checkSolvency } = useInsuranceVault();
+  const { getPolicyDetails } = usePolicyManager();
+
+  // Format utilities
+  const formatAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+  const formatAmount = (amount: bigint, decimals = 18) => {
+    const value = Number(amount) / Math.pow(10, decimals);
+    return value < 0.0001 ? "< 0.0001" : value.toFixed(4);
   };
 
-  const formatDate = (epoch: number) => {
-    // In real implementation, convert epoch to actual date
-    const date = new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000);
-    return date.toLocaleDateString();
+  const formatPercentage = (bps: number) => (bps / 100).toFixed(1) + "%";
+
+  // Calculate time remaining
+  const timeRemaining = () => {
+    const expiryTime = Number(policy.createdAt) + Number(policy.params.duration) * 12 * 1000; // 12s blocks
+    const now = Date.now();
+
+    if (now > expiryTime) return null;
+    return formatDistanceToNow(expiryTime, { addSuffix: true });
   };
 
-  const calculateExpiryDate = (createdAt: number, duration: number) => {
-    // Simplified calculation for demo
-    const expiryDate = new Date(Date.now() + duration * 12 * 1000); // Assuming 12s blocks
-    return expiryDate.toLocaleDateString();
+  // Calculate progress percentage
+  const progressPercentage = () => {
+    const now = Date.now();
+    const start = Number(policy.createdAt);
+    const end = start + Number(policy.params.duration) * 12 * 1000;
+
+    if (now >= end) return 100;
+    if (now <= start) return 0;
+
+    return ((now - start) / (end - start)) * 100;
   };
 
-  const getStatusBadge = () => {
-    if (!policy.active) {
-      return <Badge variant="destructive">Inactive</Badge>;
-    }
-
-    const currentBlock = Math.floor(Date.now() / 12000); // Simulated block number
-    const expiryBlock = policy.createdAt + policy.params.duration;
-
-    if (currentBlock > expiryBlock) {
-      return (
-        <Badge variant="outline" className="border-orange-500 text-orange-400">
-          Expired
-        </Badge>
-      );
-    }
+  // Risk level calculation
+  const getRiskIndicator = () => {
+    const colors = {
+      low: "text-green-400 border-green-500/30",
+      medium: "text-yellow-400 border-yellow-500/30",
+      high: "text-red-400 border-red-500/30",
+    };
 
     return (
-      <Badge variant="default" className="bg-green-600">
-        Active
+      <Badge variant="outline" className={colors[policy.riskLevel]}>
+        {policy.riskLevel} risk
       </Badge>
     );
   };
 
+  // Status badge with animation
+  const getStatusBadge = () => {
+    const statusConfig = {
+      active: { color: "bg-green-600", icon: Shield, text: "Active" },
+      claimed: { color: "bg-blue-600", icon: Clock, text: "Claimed" },
+      attested: { color: "bg-purple-600", icon: Activity, text: "Attested" },
+      settled: { color: "bg-gray-600", icon: Target, text: "Settled" },
+      expired: { color: "bg-orange-600", icon: AlertTriangle, text: "Expired" },
+    };
+
+    const config = statusConfig[policy.status];
+    const Icon = config.icon;
+
+    return (
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        <Badge className={`${config.color} text-white flex items-center gap-1`}>
+          <Icon className="h-3 w-3" />
+          {config.text}
+        </Badge>
+      </motion.div>
+    );
+  };
+
+  // Refresh policy data
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      // Simulate refresh delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // In real implementation, this would trigger data refetch
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Handle claim request with validation
+  const handleClaimRequest = useCallback(async () => {
+    if (!policy.estimatedPayout) return;
+
+    try {
+      // Check vault solvency before proceeding
+      const { data: isSolvent } = await checkSolvency(policy.estimatedPayout);
+
+      if (!isSolvent) {
+        alert("Vault is currently insolvent for this payout amount");
+        return;
+      }
+
+      onClaimRequest?.(policy.id);
+    } catch (error) {
+      console.error("Claim validation failed:", error);
+    }
+  }, [policy.id, policy.estimatedPayout, onClaimRequest, checkSolvency]);
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
+    hover: { scale: 1.02, transition: { duration: 0.2 } },
+  };
+
+  if (compact) {
+    return (
+      <motion.div variants={cardVariants} initial="hidden" animate="visible" whileHover="hover">
+        <Card
+          className="bg-black/60 border-green-500/30 backdrop-blur-sm cursor-pointer"
+          onClick={() => onViewDetails?.(policy.id)}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-green-400">#{policy.id}</div>
+                <div className="text-sm text-gray-400">{formatAddress(policy.pool)}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-mono text-green-400">{formatAmount(policy.premiumsPaid)} ETH</div>
+                {getStatusBadge()}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
   return (
-    <Card className="w-full max-w-md bg-black/60 border-green-500/30 backdrop-blur-sm">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-green-400 flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Policy #{policy.policyId}
-          </CardTitle>
-          {getStatusBadge()}
-        </div>
-        <CardDescription className="text-gray-300">IL Insurance for Pool {formatAddress(policy.pool)}</CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Policy Overview */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-gray-400">
-              <DollarSign className="h-3 w-3" />
-              Premium Paid
-            </div>
-            <div className="font-mono text-green-400">{premiumPaid} ETH</div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-gray-400">
-              <Target className="h-3 w-3" />
-              Max Payout
-            </div>
-            <div className="font-mono text-green-400">{potentialPayout} ETH</div>
-          </div>
-        </div>
-
-        <Separator className="bg-gray-600" />
-
-        {/* Policy Parameters */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-gray-200">Coverage Details</h4>
-
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Deductible:</span>
-              <span className="text-white">{(policy.params.deductibleBps / 100).toFixed(1)}%</span>
+    <TooltipProvider>
+      <motion.div variants={cardVariants} initial="hidden" animate="visible" whileHover="hover">
+        <Card className="w-full max-w-md bg-black/60 border-green-500/30 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-green-400 flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Policy #{policy.id}
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      className="h-6 w-6 p-0"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refresh policy data</TooltipContent>
+                </Tooltip>
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {getRiskIndicator()}
+                {getStatusBadge()}
+              </div>
             </div>
 
-            <div className="flex justify-between">
-              <span className="text-gray-400">Coverage Cap:</span>
-              <span className="text-white">{(policy.params.capBps / 100).toFixed(1)}%</span>
+            <CardDescription className="text-gray-300 flex items-center justify-between">
+              <span>IL Insurance for Pool {formatAddress(policy.pool)}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.open(`https://etherscan.io/address/${policy.pool}`, "_blank")}
+                className="h-6 w-6 p-0"
+              >
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </CardDescription>
+
+            {/* Progress bar for policy duration */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>Time remaining</span>
+                <span>{timeRemaining() || "Expired"}</span>
+              </div>
+              <Progress value={progressPercentage()} className="h-1" />
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {/* Key Metrics */}
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="space-y-1 text-center">
+                <div className="flex items-center justify-center gap-1 text-gray-400">
+                  <DollarSign className="h-3 w-3" />
+                  <span className="text-xs">Paid</span>
+                </div>
+                <div className="font-mono text-green-400">{formatAmount(policy.premiumsPaid)} ETH</div>
+              </div>
+
+              <div className="space-y-1 text-center">
+                <div className="flex items-center justify-center gap-1 text-gray-400">
+                  <Target className="h-3 w-3" />
+                  <span className="text-xs">Max Payout</span>
+                </div>
+                <div className="font-mono text-green-400">
+                  {policy.estimatedPayout ? formatAmount(policy.estimatedPayout) : "--"} ETH
+                </div>
+              </div>
+
+              <div className="space-y-1 text-center">
+                <div className="flex items-center justify-center gap-1 text-gray-400">
+                  {policy.riskLevel === "high" ? (
+                    <TrendingUp className="h-3 w-3 text-red-400" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-green-400" />
+                  )}
+                  <span className="text-xs">Risk</span>
+                </div>
+                <div className={`font-mono ${policy.riskLevel === "high" ? "text-red-400" : "text-green-400"}`}>
+                  {policy.riskLevel}
+                </div>
+              </div>
             </div>
 
-            <div className="flex justify-between">
-              <span className="text-gray-400">Premium Rate:</span>
-              <span className="text-white">{(policy.params.premiumBps / 100).toFixed(2)}%</span>
-            </div>
+            <AnimatePresence>
+              {showDetails && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-4"
+                >
+                  <Separator className="bg-gray-600" />
 
-            <div className="flex justify-between">
-              <span className="text-gray-400">Duration:</span>
-              <span className="text-white">~2 weeks</span>
-            </div>
-          </div>
-        </div>
+                  {/* Policy Parameters */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-200">Coverage Details</h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Deductible:</span>
+                        <span className="text-white">{formatPercentage(Number(policy.params.deductibleBps))}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Coverage Cap:</span>
+                        <span className="text-white">{formatPercentage(Number(policy.params.capBps))}</span>
+                      </div>
+                    </div>
+                  </div>
 
-        <Separator className="bg-gray-600" />
+                  {/* Timeline */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-gray-200 flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      Timeline
+                    </h4>
+                    <div className="text-xs space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Created:</span>
+                        <span className="text-white">
+                          {format(new Date(Number(policy.createdAt)), "MMM dd, yyyy HH:mm")}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Last Updated:</span>
+                        <span className="text-white">{format(new Date(policy.lastUpdated), "MMM dd, HH:mm")}</span>
+                      </div>
+                    </div>
+                  </div>
 
-        {/* Timeline */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-gray-200 flex items-center gap-1">
-            <Clock className="h-4 w-4" />
-            Timeline
-          </h4>
+                  {/* Event History */}
+                  {(policyEvents.created || policyEvents.claimRequested) && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold text-gray-200">Recent Activity</h4>
+                      <div className="space-y-1 text-xs">
+                        {policyEvents.claimSettled && (
+                          <div className="flex justify-between text-green-400">
+                            <span>Claim Settled</span>
+                            <span>{formatAmount(policyEvents.claimSettled.payout)} ETH</span>
+                          </div>
+                        )}
+                        {policyEvents.claimAttested && (
+                          <div className="flex justify-between text-purple-400">
+                            <span>Claim Attested</span>
+                            <span>✓</span>
+                          </div>
+                        )}
+                        {policyEvents.claimRequested && (
+                          <div className="flex justify-between text-blue-400">
+                            <span>Claim Requested</span>
+                            <span>⏳</span>
+                          </div>
+                        )}
+                        {policyEvents.created && (
+                          <div className="flex justify-between text-gray-400">
+                            <span>Policy Created</span>
+                            <span>🛡️</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-          <div className="text-xs space-y-1">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Created:</span>
-              <span className="text-white">{formatDate(policy.epoch)}</span>
-            </div>
-
-            <div className="flex justify-between">
-              <span className="text-gray-400">Expires:</span>
-              <span className="text-white">{calculateExpiryDate(policy.createdAt, policy.params.duration)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Commitment Hash */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-gray-200">Entry Commitment</h4>
-          <div className="p-2 bg-gray-800/50 rounded border border-gray-600">
-            <code className="text-xs text-gray-400 break-all">{policy.entryCommit || "0xa1b2c3d4e5f6..."}</code>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          {isClaimable && policy.active && (
-            <Button
-              onClick={() => onClaimRequest?.(policy.policyId)}
-              disabled={isLoading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                  Request Claim
-                </>
+                  {/* Entry Commitment */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-gray-200">Entry Commitment</h4>
+                    <div className="p-2 bg-gray-800/50 rounded border border-gray-600">
+                      <code className="text-xs text-gray-400 break-all">{policy.entryCommit}</code>
+                    </div>
+                  </div>
+                </motion.div>
               )}
-            </Button>
-          )}
+            </AnimatePresence>
 
-          <Button
-            onClick={() => onBurnPolicy?.(policy.policyId)}
-            disabled={isLoading || !policy.active}
-            variant="outline"
-            className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
-          >
-            Burn Policy
-          </Button>
-        </div>
+            {/* Toggle Details Button */}
+            {!compact && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDetails(!showDetails)}
+                className="w-full text-gray-400 hover:text-white"
+              >
+                {showDetails ? "Hide Details" : "Show Details"}
+              </Button>
+            )}
 
-        {/* Phase 2 Implementation Note */}
-        <div className="pt-2 border-t border-gray-600">
-          <div className="text-xs text-gray-400 text-center">Phase 2: ERC-1155 Policy Management ✅</div>
-        </div>
-      </CardContent>
-    </Card>
+            {/* Actions */}
+            {showActions && (
+              <div className="flex gap-2 pt-2">
+                {(policy.status === "active" || policy.status === "claimed") && (
+                  <Button
+                    onClick={handleClaimRequest}
+                    disabled={isLoading || !policy.active}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </>
+                    ) : policy.status === "claimed" ? (
+                      <>
+                        <Clock className="h-4 w-4 mr-2" />
+                        Claim Pending
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        Request Claim
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {policy.status === "settled" && (
+                  <Button
+                    onClick={() => onViewDetails?.(policy.id)}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Target className="h-4 w-4 mr-2" />
+                    View Settlement
+                  </Button>
+                )}
+
+                <Button
+                  onClick={() => onBurnPolicy?.(policy.id)}
+                  disabled={isLoading || policy.status === "settled"}
+                  variant="outline"
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  {policy.status === "settled" ? "Completed" : "Cancel Policy"}
+                </Button>
+              </div>
+            )}
+
+            {/* Updated Phase Implementation Note */}
+            <div className="pt-2 border-t border-gray-600">
+              <div className="text-xs text-gray-400 text-center">Phase 6: Real-time Policy Management ✅</div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </TooltipProvider>
   );
 }

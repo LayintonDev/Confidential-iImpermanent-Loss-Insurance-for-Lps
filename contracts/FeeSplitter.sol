@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IInsuranceVault.sol";
-import { PremiumMath } from "./libraries/PremiumMath.sol";
+import {PremiumMath} from "./libraries/PremiumMath.sol";
 
 /**
  * @title FeeSplitter
@@ -97,14 +97,9 @@ contract FeeSplitter is AccessControl {
             return 0; // No premium on first initialization
         }
 
-
         uint256 premiumRate = poolPremiumRates[pool];
         premiumAmount = PremiumMath.calculatePremium(
-            lastFeeGrowthGlobal0[pool],
-            lastFeeGrowthGlobal1[pool],
-            feeGrowthGlobal0,
-            feeGrowthGlobal1,
-            premiumRate
+            lastFeeGrowthGlobal0[pool], lastFeeGrowthGlobal1[pool], feeGrowthGlobal0, feeGrowthGlobal1, premiumRate
         );
 
         // Update last recorded fee growth
@@ -189,12 +184,25 @@ contract FeeSplitter is AccessControl {
 
         uint256 premiumRate = poolPremiumRates[pool];
         return PremiumMath.calculatePremium(
-            lastFeeGrowthGlobal0[pool],
-            lastFeeGrowthGlobal1[pool],
-            feeGrowthGlobal0,
-            feeGrowthGlobal1,
-            premiumRate
+            lastFeeGrowthGlobal0[pool], lastFeeGrowthGlobal1[pool], feeGrowthGlobal0, feeGrowthGlobal1, premiumRate
         );
+    }
+
+    /**
+     * @notice Calculate expected premium for a given swap amount (router compatibility)
+     * @param pool The pool address
+     * @param amountIn The amount being swapped in
+     * @return Expected premium fee
+     */
+    function calculateExpectedPremium(address pool, uint256 amountIn) external view returns (uint256) {
+        if (!poolInitialized[pool]) {
+            return 0;
+        }
+
+        uint256 premiumRate = poolPremiumRates[pool];
+        // Simplified calculation for router quoting
+        // In practice, this would need more sophisticated estimation
+        return (amountIn * premiumRate) / 10000; // Convert basis points to actual amount
     }
 
     // =============================================================================

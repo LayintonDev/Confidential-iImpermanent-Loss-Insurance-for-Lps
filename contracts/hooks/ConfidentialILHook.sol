@@ -29,6 +29,9 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
     error PolicyNotFound();
     error InsuranceNotEnabled();
     error InvalidParameters();
+    error ClaimAlreadyExists();
+    error InvalidClaimStatus();
+    error ContractPaused();
 
     // =============================================================================
     //                                  EVENTS
@@ -42,6 +45,31 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
 
     /// @notice Emitted when a claim is requested
     event ClaimRequested(uint256 indexed policyId, bytes32 commitmentC);
+
+    // =============================================================================
+    //                                ENUMS
+    // =============================================================================
+
+    enum ClaimStatus {
+        None,
+        Requested,
+        Attested,
+        Settled,
+        Rejected
+    }
+
+    // =============================================================================
+    //                                STRUCTS
+    // =============================================================================
+
+    struct ClaimData {
+        ClaimStatus status;
+        uint256 requestTimestamp;
+        uint256 policyId;
+        bytes32 exitCommit;
+        address claimer;
+        uint256 requestedAmount;
+    }
 
     // =============================================================================
     //                                STORAGE
@@ -67,6 +95,12 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
 
     /// @notice Mapping to track if position has insurance enabled
     mapping(address => mapping(address => bool)) public hasInsurance; // pool => lp => hasInsurance
+
+    /// @notice Mapping of policy ID to claim data
+    mapping(uint256 => ClaimData) public claims;
+
+    /// @notice Emergency pause state
+    bool public paused;
 
     // =============================================================================
     //                               CONSTRUCTOR
@@ -191,6 +225,8 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
         nonReentrant
         returns (bytes4)
     {
+        if (paused) revert ContractPaused();
+
         // Check if this is an insured position (policyId > 0)
         if (policyId > 0) {
             // Validate policy exists
@@ -198,12 +234,27 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
                 revert PolicyNotFound();
             }
 
+            // Check if claim already exists
+            if (claims[policyId].status != ClaimStatus.None) {
+                revert ClaimAlreadyExists();
+            }
+
             // Get the LP address from policy
             address lp = policyManager.ownerOfPolicy(policyId);
 
-            // Generate exit commitment hash
-            bytes32 exitCommit = _generateExitCommitment(pool, lp, policyId);
+            // Generate exit commitment hash with current pool state
+            bytes32 exitCommit = _generateExitCommitment(pool, lp, policyId, data);
             exitCommitmentHashes[policyId] = exitCommit;
+
+            // Create claim data
+            claims[policyId] = ClaimData({
+                status: ClaimStatus.Requested,
+                requestTimestamp: block.timestamp,
+                policyId: policyId,
+                exitCommit: exitCommit,
+                claimer: lp,
+                requestedAmount: 0 // Will be calculated by fhenix service
+            });
 
             // Emit claim requested event
             emit ClaimRequested(policyId, exitCommit);
@@ -243,7 +294,9 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
     {
         // Only skim premiums from whitelisted pools
         if (whitelistedPools[pool]) {
-            try feeSplitter.extractPremium(pool, uint256(feeGrowthGlobal0), uint256(feeGrowthGlobal1)) returns (uint256 premiumAmount) {
+            try feeSplitter.extractPremium(pool, uint256(feeGrowthGlobal0), uint256(feeGrowthGlobal1)) returns (
+                uint256 premiumAmount
+            ) {
                 // Deposit premium to vault if amount > 0
                 if (premiumAmount > 0) {
                     try insuranceVault.depositPremium(pool, premiumAmount) {
@@ -260,6 +313,92 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
         }
 
         return IUniswapV4Hook.afterSwap.selector;
+    }
+
+    /**
+     * @notice Called before a swap occurs - used by routers for quoting
+     * @param pool The pool where the swap will occur
+     * @param params Swap parameters
+     * @param data Additional data passed to the hook
+     * @return bytes4 The function selector to confirm the hook processed the call
+     */
+    function beforeSwap(address pool, SwapParams calldata params, bytes calldata data)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        // Routers can call this to predict gas usage and fees
+        // This is a view function so it doesn't modify state
+
+        if (!whitelistedPools[pool]) {
+            return IUniswapV4Hook.beforeSwap.selector;
+        }
+
+        // Signal to router that this pool has premium extraction
+        // Router can adjust gas estimates accordingly
+        return IUniswapV4Hook.beforeSwap.selector;
+    }
+
+    // =============================================================================
+    //                         ROUTER COMPATIBILITY
+    // =============================================================================
+
+    /**
+     * @notice Returns the hook's permissions for routers to understand capabilities
+     * @return Permissions The permissions this hook uses
+     */
+    function getHookPermissions() external pure returns (Permissions memory) {
+        return Permissions({
+            beforeInitialize: false,
+            afterInitialize: false,
+            beforeAddLiquidity: true,
+            afterAddLiquidity: true,
+            beforeRemoveLiquidity: true,
+            afterRemoveLiquidity: false,
+            beforeSwap: true, // Routers need this for quoting
+            afterSwap: true, // We use this for premium collection
+            beforeDonate: false,
+            afterDonate: false
+        });
+    }
+
+    /**
+     * @notice Quote the premium impact of a swap without executing it
+     * @param pool The pool for the swap
+     * @param amountIn Amount being swapped in
+     * @return premiumFee The estimated premium fee
+     */
+    function quotePremiumImpact(address pool, uint256 amountIn) external view returns (uint256 premiumFee) {
+        if (!whitelistedPools[pool]) {
+            return 0;
+        }
+
+        // Calculate expected premium extraction
+        return feeSplitter.calculateExpectedPremium(pool, amountIn);
+    }
+
+    /**
+     * @notice Get the additional gas overhead this hook adds to swaps
+     * @param pool The pool being quoted
+     * @return gasOverhead Additional gas needed for hook execution
+     */
+    function getSwapGasOverhead(address pool) external view returns (uint256 gasOverhead) {
+        if (!whitelistedPools[pool]) {
+            return 0;
+        }
+
+        // Return estimated gas cost for premium extraction
+        return 45000; // Approximate gas for afterSwap premium collection
+    }
+
+    /**
+     * @notice Check if a pool supports insurance (router compatibility)
+     * @param pool The pool address to check
+     * @return supported Whether the pool supports insurance
+     */
+    function supportsInsurance(address pool) external view returns (bool supported) {
+        return whitelistedPools[pool];
     }
 
     // =============================================================================
@@ -371,9 +510,56 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
      * @param policyId Policy ID
      * @return Exit commitment hash
      */
-    function _generateExitCommitment(address pool, address lp, uint256 policyId) internal view returns (bytes32) {
+    function _generateExitCommitment(address pool, address lp, uint256 policyId, bytes calldata data)
+        internal
+        view
+        returns (bytes32)
+    {
         // For MVP: simple hash of exit data + block info
         // In production: would be hash of encrypted FHE exit data
-        return keccak256(abi.encodePacked(pool, lp, policyId, block.number, block.timestamp));
+        return keccak256(abi.encodePacked(pool, lp, policyId, block.number, block.timestamp, data));
+    }
+
+    // =============================================================================
+    //                           CLAIM MANAGEMENT
+    // =============================================================================
+
+    /**
+     * @notice Get claim status for a policy
+     * @param policyId The policy ID to check
+     * @return status The current claim status
+     */
+    function getClaimStatus(uint256 policyId) external view returns (ClaimStatus status) {
+        status = claims[policyId].status;
+    }
+
+    /**
+     * @notice Update claim status (admin only)
+     * @param policyId The policy ID
+     * @param newStatus The new status
+     */
+    function updateClaimStatus(uint256 policyId, ClaimStatus newStatus) external onlyRole(ADMIN_ROLE) {
+        if (claims[policyId].status == ClaimStatus.None) {
+            revert PolicyNotFound();
+        }
+
+        ClaimStatus currentStatus = claims[policyId].status;
+
+        // Validate state transition
+        if (
+            newStatus == ClaimStatus.None || (currentStatus == ClaimStatus.Settled && newStatus != ClaimStatus.Settled)
+                || (currentStatus == ClaimStatus.Rejected && newStatus != ClaimStatus.Rejected)
+        ) {
+            revert InvalidClaimStatus();
+        }
+
+        claims[policyId].status = newStatus;
+    }
+
+    /**
+     * @notice Emergency pause toggle (admin only)
+     */
+    function togglePause() external onlyRole(ADMIN_ROLE) {
+        paused = !paused;
     }
 }

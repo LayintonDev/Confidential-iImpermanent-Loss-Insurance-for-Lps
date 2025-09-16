@@ -70,7 +70,7 @@ include_push_bytes = true
 # RPC endpoints for forking and deployment
 [rpc_endpoints]
 mainnet = "https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
-sepolia = "https://eth-sepolia.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
+sepolia = "${SEPOLIA_RPC_URL}"
 polygon = "https://polygon-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
 arbitrum = "https://arb-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
 optimism = "https://opt-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"

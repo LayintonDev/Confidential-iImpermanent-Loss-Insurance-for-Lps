@@ -35,12 +35,7 @@ contract IntegrationTest is Test {
         feeSplitter = new FeeSplitter(admin, address(vault));
 
         // Deploy hook with correct constructor parameters
-        hook = new ConfidentialILHook(
-            address(policyManager),
-            address(vault),
-            address(feeSplitter),
-            admin
-        );
+        hook = new ConfidentialILHook(address(policyManager), address(vault), address(feeSplitter), admin);
 
         // Setup roles and permissions
         vault.grantHookRole(address(feeSplitter));
@@ -65,7 +60,7 @@ contract IntegrationTest is Test {
         // Extract premium with fee growth (simulating hook call)
         vm.prank(address(hook));
         uint256 premium2 = feeSplitter.extractPremium(pool1, 1200, 2200);
-        
+
         // Expected premium: delta0=200, delta1=200, avg=200, rate=5% => 200*500/10000=10
         assertEq(premium2, 10);
 
@@ -75,7 +70,7 @@ contract IntegrationTest is Test {
 
     function testMultiplePoolFeeSplitterIntegration() public {
         address pool2 = address(0x4);
-        
+
         // Initialize both pools
         vm.startPrank(address(hook));
         feeSplitter.extractPremium(pool1, 1000, 2000);
@@ -139,7 +134,7 @@ contract IntegrationTest is Test {
         vm.prank(address(hook));
         vm.expectRevert();
         feeSplitter.extractPremium(pool1, 1200, 2200);
-        
+
         // Verify no additional premium was deposited (still 0 from initialization)
         assertEq(vault.totalPremiumsCollected(pool1), 0);
     }

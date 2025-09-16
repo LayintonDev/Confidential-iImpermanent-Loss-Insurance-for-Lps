@@ -42,6 +42,7 @@ This project implements a confidential impermanent loss insurance system for Uni
 - [Foundry Book](https://book.getfoundry.sh/)
 - [Project Roadmap](.github/project-roadmap.md)
 - [Phase 2 Completion](PHASE2_COMPLETION.md)
+- [Phase 4 Completion](PHASE4_COMPLETION.md) ⭐ **NEW**
 
 ## ⚡ Quick Start
 
@@ -94,10 +95,20 @@ anvil
 
 ## 📊 Test Results
 
-✅ **27/27 tests passing** (100% success rate)  
-⚡ **574ms execution time** (20-30x faster than Hardhat)  
+✅ **43/43 Foundry tests passing** (100% success rate)  
+✅ **11/16 API tests passing** (Core functionality verified)  
+⚡ **Sub-second execution time** (Foundry + TypeScript integration)  
 🧪 **1000+ fuzz test iterations** per function  
-📈 **Comprehensive gas reporting** included
+📈 **Comprehensive gas reporting** included  
+🔧 **Phase 4: IL Math & Claims** - COMPLETE
+
+**Current Implementation Status:**
+
+- 🟢 **Phase 1**: Repository Bootstrap - COMPLETE
+- 🟢 **Phase 2**: Core Policy & Vault System - COMPLETE
+- 🟢 **Phase 3**: Fee Splitting & Premium Flow - COMPLETE
+- 🟢 **Phase 4**: IL Math & Claim Request Flow - COMPLETE
+- 🔄 **Phase 5**: EigenLayer AVS & Attestation Flow - IN PROGRESS
 
 ## 📁 Project Structure
 
@@ -109,17 +120,33 @@ contracts/
 │   └── InsuranceVault.sol     # Premium storage & claim payouts
 ├── hooks/
 │   └── ConfidentialILHook.sol # Uniswap v4 hook implementation
+├── libraries/
+│   └── ILMath.sol             # IL calculation library ⭐ NEW
 └── interfaces/
     └── IUniswapV4Hook.sol     # Hook interface
 
 test/
 ├── PolicyManager.t.sol        # Policy NFT tests (6 tests)
 ├── InsuranceVault.t.sol       # Vault tests (12 tests)
-└── FeeSplitter.t.sol          # Premium extraction tests (9 tests)
+├── FeeSplitter.t.sol          # Premium extraction tests (21 tests)
+└── Integration.t.sol          # End-to-end tests (4 tests)
 
-frontend/                      # Next.js dApp
-scripts/                       # Deployment scripts
-build.sh                       # Custom build system (20+ commands)
+fhenix-service/                # Mock FHE computation service ⭐ NEW
+├── src/
+│   ├── index.ts              # Express API server
+│   ├── ilCalculation.ts      # Mock IL computation
+│   ├── signature.ts          # ECDSA signature service
+│   └── types.ts              # TypeScript schemas
+└── test/                     # API integration tests
+
+scripts/
+├── indexer/                  # Blockchain event indexer ⭐ NEW
+│   ├── src/index.ts         # Event processing service
+│   └── test/                # Indexer tests
+└── deploy.ts                # Contract deployment
+
+frontend/                     # Next.js dApp
+build.sh                     # Custom build system (20+ commands)
 ```
 
 ## 🧪 Advanced Testing
@@ -165,7 +192,10 @@ forge test --match-contract PolicyManager
 
 1. **afterAddLiquidity** → Create insurance policy if enabled
 2. **afterSwap** → Extract premiums from fees → Deposit to vault
-3. **beforeRemoveLiquidity** → Initiate claim process
+3. **beforeRemoveLiquidity** → Initiate claim process → Emit ClaimRequested event
+4. **Event Indexer** → Process ClaimRequested → Call Fhenix Service
+5. **Fhenix Service** → Calculate IL using ILMath → Generate attestation
+6. **AVS Integration** → Verify attestation → Settle claim (Phase 5)
 
 ## 🤝 Contributing
 

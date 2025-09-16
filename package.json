@@ -1,0 +1,24 @@
+{
+  "name": "confidential-il-insurance",
+  "version": "1.0.0",
+  "description": "Confidential Impermanent Loss Insurance Protocol",
+  "private": true,
+  "workspaces": [
+    "avs-node",
+    "fhenix-service"
+  ],
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "install-all": "npm install && cd avs-node && npm install && cd ../fhenix-service && npm install"
+  },
+  "keywords": [
+    "defi",
+    "insurance",
+    "eigenlayer",
+    "fhenix",
+    "impermanent-loss"
+  ],
+  "author": "Confidential IL Insurance Team",
+  "license": "MIT"
+}

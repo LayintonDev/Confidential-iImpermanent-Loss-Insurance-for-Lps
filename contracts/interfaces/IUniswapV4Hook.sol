@@ -7,6 +7,28 @@ pragma solidity ^0.8.26;
  * @dev This interface defines all the callback functions that a hook can implement
  *      to interact with Uniswap V4 pool operations
  */
+
+/// @notice Parameters for a swap operation
+struct SwapParams {
+    bool zeroForOne;
+    int256 amountSpecified;
+    uint160 sqrtPriceLimitX96;
+}
+
+/// @notice Hook permissions structure for router compatibility
+struct Permissions {
+    bool beforeInitialize;
+    bool afterInitialize;
+    bool beforeAddLiquidity;
+    bool afterAddLiquidity;
+    bool beforeRemoveLiquidity;
+    bool afterRemoveLiquidity;
+    bool beforeSwap;
+    bool afterSwap;
+    bool beforeDonate;
+    bool afterDonate;
+}
+
 interface IUniswapV4Hook {
     /**
      * @notice Called before a pool is initialized
@@ -73,6 +95,15 @@ interface IUniswapV4Hook {
     function afterRemoveLiquidity(address pool, address lp, uint256 amount0, uint256 amount1, bytes calldata data)
         external
         returns (bytes4);
+
+    /**
+     * @notice Called before a swap occurs in the pool
+     * @param pool The pool where the swap will occur
+     * @param params The swap parameters
+     * @param data Additional data passed to the hook
+     * @return bytes4 The function selector to confirm the hook processed the call
+     */
+    function beforeSwap(address pool, SwapParams calldata params, bytes calldata data) external returns (bytes4);
 
     /**
      * @notice Called after a swap occurs in the pool

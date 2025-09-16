@@ -392,6 +392,32 @@ auto-generated/
 *.zip
 
 # =============================================================================
+#                          PROJECT MANAGEMENT FILES
+# =============================================================================
+
+# Phase documentation files (exclude from git)
+PHASE*.md
+COMMIT_PHASE*.md
+*_PHASE*.md
+
+# Project status files (exclude from git)
+PROJECT_STATUS*.md
+PROJECT_COMPLETION*.md
+*_STATUS*.md
+
+# Migration and preparation files (exclude from git)
+*_MIGRATION*.md
+*_PREPARATION*.md
+*_IMPLEMENTATION*.md
+*_SUMMARY.md
+*_GUIDE.md
+TECH_STACK_UPDATE*.md
+FRONTEND_INTEGRATION*.md
+HARDHAT_RESOLUTION*.md
+SEPOLIA_DEPLOYMENT*.md
+FOUNDRY_*.md
+
+# =============================================================================
 #                             KEEP THESE FILES
 # =============================================================================
 
