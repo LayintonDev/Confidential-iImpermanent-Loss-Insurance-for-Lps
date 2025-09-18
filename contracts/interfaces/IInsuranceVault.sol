@@ -11,7 +11,7 @@ interface IInsuranceVault {
      * @param pool The pool from which premiums were collected
      * @param amount The amount of premiums to deposit
      */
-    function depositPremium(address pool, uint256 amount) external;
+    function depositPremium(address pool, uint256 amount) external payable;
 
     /**
      * @notice Pay claim for a specific policy

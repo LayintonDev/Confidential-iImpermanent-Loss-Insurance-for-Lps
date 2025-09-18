@@ -2,11 +2,13 @@
 pragma solidity ^0.8.26;
 
 import "../interfaces/IUniswapV4Hook.sol";
+import "../interfaces/IPolicyManager.sol";
+import "../interfaces/IFeeSplitter.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../PolicyManager.sol";
 import "../vaults/InsuranceVault.sol";
 import "../FeeSplitter.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title ConfidentialILHook
@@ -106,7 +108,7 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
     //                               CONSTRUCTOR
     // =============================================================================
 
-    constructor(address _policyManager, address _insuranceVault, address _feeSplitter, address admin) {
+    constructor(address _policyManager, address payable _insuranceVault, address _feeSplitter, address admin) {
         policyManager = PolicyManager(_policyManager);
         insuranceVault = InsuranceVault(_insuranceVault);
         feeSplitter = FeeSplitter(_feeSplitter);
@@ -142,6 +144,7 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
      */
     function afterInitialize(address, /* pool */ uint160, /* sqrtPriceX96 */ bytes calldata /* data */ )
         external
+        pure
         override
         returns (bytes4)
     {
@@ -160,7 +163,7 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
         uint256, /* amount0 */
         uint256, /* amount1 */
         bytes calldata /* data */
-    ) external override returns (bytes4) {
+    ) external view override returns (bytes4) {
         // TODO: Pre-liquidity addition validation
         if (!whitelistedPools[pool]) {
             revert InvalidPool();
@@ -196,8 +199,8 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
             PolicyManager.PolicyParams memory params = _parsePolicyParams(data);
             params.pool = pool;
 
-            // Mint policy NFT
-            uint256 policyId = policyManager.mintPolicy(lp, pool, params, entryCommit);
+            // Mint policy NFT with default coverage and premium values
+            uint256 policyId = policyManager.mintPolicy(lp, pool, 1 ether, 0.01 ether, entryCommit);
 
             // Store commitment hash
             commitmentHashes[policyId] = entryCommit;
@@ -273,7 +276,7 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
         uint256, /* amount0 */
         uint256, /* amount1 */
         bytes calldata /* data */
-    ) external override returns (bytes4) {
+    ) external pure override returns (bytes4) {
         // TODO: Post-removal cleanup if needed
         return IUniswapV4Hook.afterRemoveLiquidity.selector;
     }
@@ -318,11 +321,9 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
     /**
      * @notice Called before a swap occurs - used by routers for quoting
      * @param pool The pool where the swap will occur
-     * @param params Swap parameters
-     * @param data Additional data passed to the hook
      * @return bytes4 The function selector to confirm the hook processed the call
      */
-    function beforeSwap(address pool, SwapParams calldata params, bytes calldata data)
+    function beforeSwap(address pool, SwapParams calldata, /* params */ bytes calldata /* data */ )
         external
         view
         override
@@ -447,7 +448,7 @@ contract ConfidentialILHook is IUniswapV4Hook, AccessControl, ReentrancyGuard {
      * @param data Hook data bytes
      * @return PolicyParams struct with parsed or default values
      */
-    function _parsePolicyParams(bytes calldata data) internal view returns (PolicyManager.PolicyParams memory) {
+    function _parsePolicyParams(bytes calldata data) internal pure returns (PolicyManager.PolicyParams memory) {
         PolicyManager.PolicyParams memory params;
 
         if (data.length >= 13) {

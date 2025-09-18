@@ -67,6 +67,7 @@ contract DeploySepoliaScript is Script {
         console.log("\n=== Deploying EigenAVSManager ===");
         avsManager = new EigenAVSManager(
             address(insuranceVault),
+            address(0), // serviceManager (update later)
             address(fhenixProxy),
             1 ether, // minimum stake: 1 ETH
             67 // signature threshold: 67%
@@ -80,7 +81,9 @@ contract DeploySepoliaScript is Script {
 
         // 7. Deploy ConfidentialILHook (depends on other contracts)
         console.log("\n=== Deploying ConfidentialILHook ===");
-        hook = new ConfidentialILHook(address(policyManager), address(insuranceVault), address(feeSplitter), deployer);
+        hook = new ConfidentialILHook(
+            address(policyManager), payable(address(insuranceVault)), address(feeSplitter), deployer
+        );
         console.log("ConfidentialILHook deployed at:", address(hook));
 
         // 8. Setup permissions and roles

@@ -35,7 +35,7 @@ contract IntegrationTest is Test {
         feeSplitter = new FeeSplitter(admin, address(vault));
 
         // Deploy hook with correct constructor parameters
-        hook = new ConfidentialILHook(address(policyManager), address(vault), address(feeSplitter), admin);
+        hook = new ConfidentialILHook(address(policyManager), payable(address(vault)), address(feeSplitter), admin);
 
         // Setup roles and permissions
         vault.grantHookRole(address(feeSplitter));

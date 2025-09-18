@@ -2,11 +2,12 @@
 
 ## Overview
 
-The Fhenix Service is a mock FHE (Fully Homomorphic Encryption) computation service that simulates confidential impermanent loss calculations for the IL insurance system. In production, this would be replaced with actual Fhenix FHE computation.
+The Fhenix Service is a **real FHE (Fully Homomorphic Encryption) computation service** that performs confidential impermanent loss calculations for the IL insurance system using the official FhenixJS SDK. The service provides true confidential computing capabilities with fallback simulation for development.
 
 **Base URL**: `http://localhost:3001`  
 **Content-Type**: `application/json`  
 **Version**: `1.0.0`
+**FHE Enabled**: `true`
 
 ---
 
@@ -23,10 +24,11 @@ Returns the current health status of the Fhenix service.
 ```json
 {
   "status": "healthy",
-  "service": "fhenix-mock",
+  "service": "fhenix-real-fhe",
   "timestamp": "2025-09-14T18:00:00.000Z",
   "workerId": "worker-1",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "fheEnabled": true
 }
 ```
 

@@ -4,28 +4,68 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, TrendingUp, Activity, Wallet, BarChart3, PlusCircle, Settings } from "lucide-react";
+import {
+  Shield,
+  TrendingUp,
+  Activity,
+  Wallet,
+  BarChart3,
+  PlusCircle,
+  Settings,
+  Home,
+  FileText,
+  DollarSign,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Navigation,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { Address, Hash } from "viem";
 import { useAccount } from "wagmi";
+import Link from "next/link";
 
 // Import our enhanced components
 import PolicyCard from "./PolicyCard";
 import PremiumCard from "./PremiumCard";
 import { VaultStats } from "./VaultStats";
+import VaultDashboard from "./VaultDashboard";
 import ClaimFlow from "./ClaimFlow";
 import TransactionMonitor from "./TransactionMonitor";
 import WalletConnection from "./WalletConnection";
 
 // Import transaction hooks
-import { usePolicyTransactions, useVaultTransactions } from "@/lib/transactions";
+import {
+  usePolicyTransactions,
+  useV4PolicyTransactions,
+  useVaultTransactions,
+  parseTransactionError,
+} from "@/lib/transactions";
 import { useAppStore } from "@/lib/store";
+import { transactionToasts } from "@/lib/toast-config";
 
 interface DashboardIntegrationProps {
   selectedPool?: string;
   onPoolSelect?: (poolAddress: string) => void;
 }
+
+// Enhanced loading states and error handling
+interface TransactionState {
+  isLoading: boolean;
+  error: string | null;
+  success: boolean;
+  txHash?: string;
+}
+
+// Navigation items for the dashboard
+const navigationItems = [
+  { name: "Dashboard", href: "/dashboard", icon: Home, current: true },
+  { name: "My Policies", href: "/policy", icon: FileText, current: false },
+  { name: "Vault Management", href: "/vault", icon: DollarSign, current: false },
+  { name: "Analytics", href: "/analytics", icon: BarChart3, current: false },
+];
 
 export default function DashboardIntegration({
   selectedPool = "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640",
@@ -38,9 +78,35 @@ export default function DashboardIntegration({
   const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null);
   const [showTransactionMonitor, setShowTransactionMonitor] = useState(false);
 
+  // Enhanced transaction states
+  const [policyState, setPolicyState] = useState<TransactionState>({
+    isLoading: false,
+    error: null,
+    success: false,
+  });
+  const [vaultDepositState, setVaultDepositState] = useState<TransactionState>({
+    isLoading: false,
+    error: null,
+    success: false,
+  });
+  const [vaultWithdrawState, setVaultWithdrawState] = useState<TransactionState>({
+    isLoading: false,
+    error: null,
+    success: false,
+  });
+  const [claimState, setClaimState] = useState<TransactionState>({
+    isLoading: false,
+    error: null,
+    success: false,
+  });
+
   // Transaction hooks
-  const { mintPolicy, submitClaim, mintState, claimState } = usePolicyTransactions();
+  const { mintPolicy, submitClaim, mintState, claimState: claimHookState } = usePolicyTransactions();
+  const { addLiquidityWithInsurance } = useV4PolicyTransactions();
   const { deposit, withdraw, depositState, withdrawState } = useVaultTransactions();
+
+  // V4 Integration state
+  const [useV4Integration, setUseV4Integration] = useState(true); // Default to V4
 
   // Mock pool data - in real implementation, fetch from on-chain
   const poolData = {
@@ -53,7 +119,7 @@ export default function DashboardIntegration({
     fees24h: "75k",
   };
 
-  // Real transaction handlers
+  // Enhanced transaction handlers with better error handling and loading states
   const handleCreatePolicy = async (params: {
     deductibleBps: number;
     capBps: number;
@@ -62,91 +128,281 @@ export default function DashboardIntegration({
     amount1: string;
   }) => {
     if (!address) {
-      toast.error("Please connect your wallet");
+      transactionToasts.wallet.error("Please connect your wallet first");
       return;
     }
 
+    setPolicyState({ isLoading: true, error: null, success: false });
+
     try {
-      // In real implementation, calculate amounts and generate merkle proof
-      const amounts: [bigint, bigint] = [
-        BigInt(Math.floor(parseFloat(params.amount0) * 1e6)), // USDC has 6 decimals
-        BigInt(Math.floor(parseFloat(params.amount1) * 1e18)), // ETH has 18 decimals
-      ];
+      // Validate input amounts
+      if (!params.amount0 || !params.amount1 || parseFloat(params.amount0) <= 0 || parseFloat(params.amount1) <= 0) {
+        throw new Error("Please enter valid amounts for both tokens");
+      }
 
-      const policyParams: [number, number, number] = [params.capBps, params.deductibleBps, params.duration];
+      // Calculate total coverage and premium based on amounts
+      const coverage = BigInt(Math.floor(parseFloat(params.amount1) * 1e18)); // ETH coverage
+      const liquidityAmount = BigInt(Math.floor(parseFloat(params.amount0) * 1e6)); // USDC liquidity
+      const duration = BigInt(params.duration * 24 * 60 * 60); // Convert days to seconds
 
-      // Generate merkle proof for privacy (mock for now)
-      const merkleProof = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hash;
+      let txHash: Hash;
 
-      await mintPolicy(poolData.address, amounts, policyParams, merkleProof);
-    } catch (error) {
+      if (useV4Integration) {
+        // V4 Integration: Add liquidity + create insurance in one transaction
+        transactionToasts.policy.creating();
+
+        txHash = await addLiquidityWithInsurance(
+          "0x1111111111111111111111111111111111111111" as Address, // token0 (mock)
+          "0x2222222222222222222222222222222222222222" as Address, // token1 (mock)
+          3000, // fee tier
+          -1000, // tickLower
+          1000, // tickUpper
+          liquidityAmount,
+          coverage,
+          duration
+        );
+
+        console.log("V4 Policy + Liquidity created:", txHash);
+      } else {
+        // Legacy: Direct PolicyManager call
+        transactionToasts.policy.creating();
+
+        const premium = BigInt(Math.floor(parseFloat(params.amount0) * 1e6)); // USDC premium
+        const commitment = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hash;
+
+        txHash = await mintPolicy(address, poolData.address, coverage, premium, commitment);
+        console.log("Legacy Policy minted:", txHash);
+      }
+
+      setPolicyState({
+        isLoading: false,
+        error: null,
+        success: true,
+        txHash,
+      });
+
+      transactionToasts.policy.success(txHash);
+    } catch (error: any) {
       console.error("Policy creation failed:", error);
-      toast.error("Failed to create policy");
+      const errorMessage = parseTransactionError(error);
+
+      setPolicyState({
+        isLoading: false,
+        error: errorMessage,
+        success: false,
+      });
+
+      transactionToasts.policy.error(errorMessage);
     }
   };
 
   const handleSubmitClaim = async (policyId: string, claimAmount: string) => {
     if (!address) {
-      toast.error("Please connect your wallet");
+      transactionToasts.wallet.error("Please connect your wallet first");
       return;
     }
 
+    if (!claimAmount || parseFloat(claimAmount) <= 0) {
+      toast.error("Please enter a valid claim amount", {
+        icon: "💰",
+        duration: 4000,
+      });
+      return;
+    }
+
+    setClaimState({ isLoading: true, error: null, success: false });
+
     try {
+      transactionToasts.claim.submitting();
+
       const amount = BigInt(Math.floor(parseFloat(claimAmount) * 1e18));
       const merkleProof = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hash;
 
-      await submitClaim(BigInt(policyId), amount, merkleProof);
-    } catch (error) {
+      const txHash = await submitClaim(BigInt(policyId), amount, merkleProof);
+
+      setClaimState({
+        isLoading: false,
+        error: null,
+        success: true,
+        txHash,
+      });
+
+      transactionToasts.claim.success(txHash);
+    } catch (error: any) {
       console.error("Claim submission failed:", error);
-      toast.error("Failed to submit claim");
+      const errorMessage = parseTransactionError(error);
+
+      setClaimState({
+        isLoading: false,
+        error: errorMessage,
+        success: false,
+      });
+
+      transactionToasts.claim.error(errorMessage);
     }
   };
 
   const handleVaultDeposit = async (amount: string) => {
     if (!address) {
-      toast.error("Please connect your wallet");
+      transactionToasts.wallet.error("Please connect your wallet first");
       return;
     }
 
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid deposit amount", {
+        icon: "💰",
+        duration: 4000,
+      });
+      return;
+    }
+
+    setVaultDepositState({ isLoading: true, error: null, success: false });
+
     try {
+      transactionToasts.vault.depositing();
+
       const depositAmount = BigInt(Math.floor(parseFloat(amount) * 1e18));
-      await deposit(depositAmount, address);
-    } catch (error) {
+      const txHash = await deposit(depositAmount, address);
+
+      setVaultDepositState({
+        isLoading: false,
+        error: null,
+        success: true,
+        txHash,
+      });
+
+      transactionToasts.vault.depositSuccess(amount, txHash);
+    } catch (error: any) {
       console.error("Vault deposit failed:", error);
-      toast.error("Failed to deposit to vault");
+      const errorMessage = parseTransactionError(error);
+
+      setVaultDepositState({
+        isLoading: false,
+        error: errorMessage,
+        success: false,
+      });
+
+      transactionToasts.vault.error("deposit", errorMessage);
     }
   };
 
   const handleVaultWithdraw = async (amount: string) => {
     if (!address) {
-      toast.error("Please connect your wallet");
+      transactionToasts.wallet.error("Please connect your wallet first");
       return;
     }
 
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid withdrawal amount", {
+        icon: "💰",
+        duration: 4000,
+      });
+      return;
+    }
+
+    setVaultWithdrawState({ isLoading: true, error: null, success: false });
+
     try {
+      transactionToasts.vault.withdrawing();
+
       const withdrawAmount = BigInt(Math.floor(parseFloat(amount) * 1e18));
-      await withdraw(withdrawAmount, address);
-    } catch (error) {
+      const txHash = await withdraw(withdrawAmount, address);
+
+      setVaultWithdrawState({
+        isLoading: false,
+        error: null,
+        success: true,
+        txHash,
+      });
+
+      transactionToasts.vault.withdrawSuccess(amount, txHash);
+    } catch (error: any) {
       console.error("Vault withdrawal failed:", error);
-      toast.error("Failed to withdraw from vault");
+      const errorMessage = parseTransactionError(error);
+
+      setVaultWithdrawState({
+        isLoading: false,
+        error: errorMessage,
+        success: false,
+      });
+
+      transactionToasts.vault.error("withdraw", errorMessage);
     }
   };
 
   // Auto-show transaction monitor when transactions are pending
   useEffect(() => {
     const hasPendingTx =
-      mintState.isLoading || claimState.isLoading || depositState.isLoading || withdrawState.isLoading;
+      policyState.isLoading || claimState.isLoading || vaultDepositState.isLoading || vaultWithdrawState.isLoading;
 
     if (hasPendingTx && !showTransactionMonitor) {
       setShowTransactionMonitor(true);
     }
   }, [
-    mintState.isLoading,
+    policyState.isLoading,
     claimState.isLoading,
-    depositState.isLoading,
-    withdrawState.isLoading,
+    vaultDepositState.isLoading,
+    vaultWithdrawState.isLoading,
     showTransactionMonitor,
   ]);
+
+  // Error notification component
+  const ErrorAlert = ({ error, onDismiss }: { error: string; onDismiss: () => void }) => (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <XCircle className="h-4 w-4 text-red-400" />
+          <span className="text-red-400 text-sm">{error}</span>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onDismiss} className="text-red-400 hover:text-red-300">
+          <XCircle className="h-4 w-4" />
+        </Button>
+      </div>
+    </motion.div>
+  );
+
+  // Success notification component
+  const SuccessAlert = ({
+    message,
+    txHash,
+    onDismiss,
+  }: {
+    message: string;
+    txHash?: string;
+    onDismiss: () => void;
+  }) => (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-green-400" />
+          <span className="text-green-400 text-sm">{message}</span>
+          {txHash && (
+            <a
+              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 text-xs underline"
+            >
+              View on Etherscan
+            </a>
+          )}
+        </div>
+        <Button variant="ghost" size="sm" onClick={onDismiss} className="text-green-400 hover:text-green-300">
+          <XCircle className="h-4 w-4" />
+        </Button>
+      </div>
+    </motion.div>
+  );
 
   if (!isConnected) {
     return (
@@ -170,7 +426,7 @@ export default function DashboardIntegration({
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+        {/* Header with Navigation */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -185,6 +441,21 @@ export default function DashboardIntegration({
           </div>
 
           <div className="flex items-center gap-4">
+            {/* V4 Integration Toggle */}
+            <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg p-2 border border-gray-700">
+              <span className="text-sm text-gray-300">{useV4Integration ? "V4 Mode" : "Legacy Mode"}</span>
+              <Button
+                onClick={() => setUseV4Integration(!useV4Integration)}
+                size="sm"
+                variant={useV4Integration ? "default" : "outline"}
+                className={
+                  useV4Integration ? "bg-green-600 hover:bg-green-700 text-white" : "border-gray-600 hover:bg-gray-700"
+                }
+              >
+                {useV4Integration ? "V4 ⚡" : "Legacy"}
+              </Button>
+            </div>
+
             <WalletConnection compact />
             <Button
               onClick={() => setShowTransactionMonitor(!showTransactionMonitor)}
@@ -196,6 +467,111 @@ export default function DashboardIntegration({
             </Button>
           </div>
         </motion.div>
+
+        {/* Navigation Menu */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-black/40 backdrop-blur-sm border border-gray-700 rounded-lg p-1"
+        >
+          <nav className="flex space-x-1">
+            {navigationItems.map(item => {
+              const isCurrentPage = item.href === "/dashboard";
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    isCurrentPage
+                      ? "bg-green-600/20 text-green-400 border border-green-500/30"
+                      : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.name}
+                  {item.name === "My Policies" && userPolicies.length > 0 && (
+                    <Badge className="ml-2 bg-green-600/20 text-green-400 border-green-500/30">
+                      {userPolicies.length}
+                    </Badge>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </motion.div>
+
+        {/* V4 Integration Info Banner */}
+        {useV4Integration && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-500/30 rounded-lg p-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <CheckCircle2 className="h-5 w-5 text-green-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-green-400">Uniswap V4 Integration Active</h3>
+                <p className="text-xs text-gray-300 mt-1">
+                  Insurance policies are created automatically when you add liquidity. Premium fees are collected from
+                  swaps through V4 hooks.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Global Error and Success Alerts */}
+        {policyState.error && (
+          <ErrorAlert error={policyState.error} onDismiss={() => setPolicyState(prev => ({ ...prev, error: null }))} />
+        )}
+        {policyState.success && (
+          <SuccessAlert
+            message="Policy created successfully!"
+            txHash={policyState.txHash}
+            onDismiss={() => setPolicyState(prev => ({ ...prev, success: false }))}
+          />
+        )}
+
+        {claimState.error && (
+          <ErrorAlert error={claimState.error} onDismiss={() => setClaimState(prev => ({ ...prev, error: null }))} />
+        )}
+        {claimState.success && (
+          <SuccessAlert
+            message="Claim submitted successfully!"
+            txHash={claimState.txHash}
+            onDismiss={() => setClaimState(prev => ({ ...prev, success: false }))}
+          />
+        )}
+
+        {vaultDepositState.error && (
+          <ErrorAlert
+            error={vaultDepositState.error}
+            onDismiss={() => setVaultDepositState(prev => ({ ...prev, error: null }))}
+          />
+        )}
+        {vaultDepositState.success && (
+          <SuccessAlert
+            message="Vault deposit successful!"
+            txHash={vaultDepositState.txHash}
+            onDismiss={() => setVaultDepositState(prev => ({ ...prev, success: false }))}
+          />
+        )}
+
+        {vaultWithdrawState.error && (
+          <ErrorAlert
+            error={vaultWithdrawState.error}
+            onDismiss={() => setVaultWithdrawState(prev => ({ ...prev, error: null }))}
+          />
+        )}
+        {vaultWithdrawState.success && (
+          <SuccessAlert
+            message="Vault withdrawal successful!"
+            txHash={vaultWithdrawState.txHash}
+            onDismiss={() => setVaultWithdrawState(prev => ({ ...prev, success: false }))}
+          />
+        )}
 
         {/* Transaction Monitor */}
         {showTransactionMonitor && (
@@ -232,7 +608,15 @@ export default function DashboardIntegration({
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Vault Stats */}
+              {/* Real-time Vault Dashboard */}
+              <div className="lg:col-span-1">
+                <VaultDashboard
+                  poolAddress={selectedPool || "0x0000000000000000000000000000000000000000"}
+                  className="h-fit"
+                />
+              </div>
+
+              {/* Enhanced Vault Stats */}
               <div className="lg:col-span-2">
                 <VaultStats
                   metrics={{
@@ -333,14 +717,33 @@ export default function DashboardIntegration({
           {/* Insurance Tab */}
           <TabsContent value="insure" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <PremiumCard
-                poolAddress={poolData.address}
-                poolName={poolData.name}
-                currentPrice={poolData.currentPrice}
-                poolVolatility={poolData.volatility}
-                onCreatePolicy={handleCreatePolicy}
-                isLoading={mintState.isLoading}
-              />
+              <div className="space-y-4">
+                <PremiumCard
+                  poolAddress={poolData.address}
+                  poolName={poolData.name}
+                  currentPrice={poolData.currentPrice}
+                  poolVolatility={poolData.volatility}
+                  onCreatePolicy={handleCreatePolicy}
+                  isLoading={policyState.isLoading}
+                  error={policyState.error}
+                  success={policyState.success}
+                />
+
+                {/* Policy Creation Status */}
+                {policyState.isLoading && (
+                  <Card className="bg-blue-500/10 border border-blue-500/30">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
+                        <div>
+                          <p className="text-blue-400 font-medium">Creating Policy...</p>
+                          <p className="text-blue-300 text-sm">Please confirm the transaction in your wallet</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
 
               <div className="space-y-4">
                 <Card className="bg-black/60 border-green-500/30">
@@ -431,15 +834,27 @@ export default function DashboardIntegration({
                   <CardDescription>Deposit or withdraw funds from the insurance vault</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Vault Deposit Button with Enhanced Loading State */}
                   <Button
                     onClick={() => handleVaultDeposit("1.0")}
-                    disabled={depositState.isLoading}
-                    className="w-full bg-green-600 hover:bg-green-700"
+                    disabled={vaultDepositState.isLoading}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {depositState.isLoading ? (
+                    {vaultDepositState.isLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Depositing...
+                        <Clock className="h-4 w-4 mr-2" />
+                        Processing Deposit...
+                      </>
+                    ) : vaultDepositState.success ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2 text-green-300" />
+                        Deposit Successful!
+                      </>
+                    ) : vaultDepositState.error ? (
+                      <>
+                        <AlertCircle className="h-4 w-4 mr-2 text-red-300" />
+                        Retry Deposit
                       </>
                     ) : (
                       <>
@@ -449,16 +864,28 @@ export default function DashboardIntegration({
                     )}
                   </Button>
 
+                  {/* Vault Withdraw Button with Enhanced Loading State */}
                   <Button
                     onClick={() => handleVaultWithdraw("0.5")}
-                    disabled={withdrawState.isLoading}
+                    disabled={vaultWithdrawState.isLoading}
                     variant="outline"
-                    className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {withdrawState.isLoading ? (
+                    {vaultWithdrawState.isLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div>
-                        Withdrawing...
+                        <Clock className="h-4 w-4 mr-2" />
+                        Processing Withdrawal...
+                      </>
+                    ) : vaultWithdrawState.success ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2 text-green-300" />
+                        Withdrawal Successful!
+                      </>
+                    ) : vaultWithdrawState.error ? (
+                      <>
+                        <AlertCircle className="h-4 w-4 mr-2 text-red-300" />
+                        Retry Withdrawal
                       </>
                     ) : (
                       <>
@@ -467,6 +894,18 @@ export default function DashboardIntegration({
                       </>
                     )}
                   </Button>
+
+                  {/* Transaction Status Indicators */}
+                  {(vaultDepositState.isLoading || vaultWithdrawState.isLoading) && (
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-blue-400 text-sm">
+                        <div className="animate-pulse">
+                          <Activity className="h-4 w-4" />
+                        </div>
+                        <span>Transaction in progress... Please wait.</span>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

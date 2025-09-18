@@ -13,6 +13,8 @@ import {
   Copy,
   ExternalLink,
   Settings,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
@@ -28,6 +30,7 @@ import {
 } from "wagmi";
 import { formatEther, Address } from "viem";
 import { useAppStore } from "@/lib/store";
+import { transactionToasts } from "@/lib/toast-config";
 
 interface WalletConnectionProps {
   onConnect?: (address: Address) => void;
@@ -65,46 +68,50 @@ export default function WalletConnection({
     if (isConnected && address) {
       onConnect?.(address);
       setUserAddress(address);
-      toast.success("Wallet connected successfully!");
+      transactionToasts.wallet.connected(address);
     } else if (!isConnected) {
       onDisconnect?.();
+      transactionToasts.wallet.disconnected();
     }
   }, [isConnected, address, onConnect, onDisconnect, setUserAddress]);
 
   const handleConnect = async (connectorId: string) => {
     try {
+      transactionToasts.wallet.connecting();
       const connector = connectors.find(c => c.id === connectorId);
       if (connector) {
         connect({ connector });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Connection failed:", error);
-      toast.error("Failed to connect wallet");
+      transactionToasts.wallet.error("Failed to connect wallet: " + error.message);
     }
   };
 
   const handleDisconnect = () => {
     disconnect();
-    toast.success("Wallet disconnected");
+    transactionToasts.wallet.disconnected();
   };
 
   const handleCopyAddress = async () => {
     if (address) {
       await navigator.clipboard.writeText(address);
       setCopiedAddress(true);
-      toast.success("Address copied!");
+      toast.success("Address copied!", { icon: "📋", duration: 2000 });
       setTimeout(() => setCopiedAddress(false), 2000);
     }
   };
 
   const handleSwitchNetwork = async (targetChainId: number) => {
     try {
+      transactionToasts.wallet.switchNetwork();
       await switchChain({ chainId: targetChainId });
-      toast.success("Network switched successfully");
+      const networkName = getNetworkName(targetChainId);
+      transactionToasts.wallet.networkSwitched(networkName);
       setIsNetworkModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Network switch failed:", error);
-      toast.error("Failed to switch network");
+      transactionToasts.wallet.error("Failed to switch network: " + error.message);
     }
   };
 
@@ -181,15 +188,22 @@ export default function WalletConnection({
                   key={connector.id}
                   onClick={() => handleConnect(connector.id)}
                   disabled={isPending || isConnecting}
-                  className="w-full justify-start bg-gray-800/50 border border-gray-600 hover:bg-gray-700/50"
+                  className="w-full justify-start bg-gray-800/50 border border-gray-600 hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {(isPending || isConnecting) && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
-                      <Wallet className="h-3 w-3 text-white" />
+                  {isPending || isConnecting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-2"></div>
+                      <Clock className="h-4 w-4 mr-2" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center">
+                        <Wallet className="h-3 w-3 text-white" />
+                      </div>
+                      {connector.name}
                     </div>
-                    {connector.name}
-                  </div>
+                  )}
                 </Button>
               ))}
 

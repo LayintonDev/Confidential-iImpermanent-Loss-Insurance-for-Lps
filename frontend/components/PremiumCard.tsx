@@ -40,6 +40,8 @@ interface PremiumCardProps {
   onQuoteUpdate?: (quote: PremiumQuote) => void;
   isLoading?: boolean;
   disabled?: boolean;
+  error?: string | null;
+  success?: boolean;
 }
 
 interface PremiumQuote {
@@ -59,6 +61,8 @@ export default function PremiumCard({
   onQuoteUpdate,
   isLoading = false,
   disabled = false,
+  error = null,
+  success = false,
 }: PremiumCardProps) {
   // State management
   const [insuranceEnabled, setInsuranceEnabled] = useState(false);
@@ -421,12 +425,29 @@ export default function PremiumCard({
                 !amount0 ||
                 !amount1
               }
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className={`w-full transition-all duration-200 ${
+                success
+                  ? "bg-green-600 hover:bg-green-700"
+                  : error
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-blue-600 hover:bg-blue-700"
+              } text-white disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <Clock className="h-4 w-4 mr-2" />
                   Creating Policy...
+                </>
+              ) : success ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2 text-green-300" />
+                  Policy Created Successfully!
+                </>
+              ) : error ? (
+                <>
+                  <XCircle className="h-4 w-4 mr-2 text-red-300" />
+                  Retry Policy Creation
                 </>
               ) : !insuranceEnabled ? (
                 <>
@@ -438,6 +459,12 @@ export default function PremiumCard({
                   <Calculator className="h-4 w-4 mr-2" />
                   Enter Amounts
                 </>
+              ) : isCalculatingQuote ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Calculating Quote...
+                </>
               ) : (
                 <>
                   <Zap className="h-4 w-4 mr-2" />
@@ -445,6 +472,25 @@ export default function PremiumCard({
                 </>
               )}
             </Button>
+
+            {/* Status Messages */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-red-400 text-sm">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>{error}</span>
+                </div>
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-green-400 text-sm">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Policy created successfully! Check your policies tab.</span>
+                </div>
+              </div>
+            )}
 
             {/* Phase Implementation Note */}
             <div className="pt-2 border-t border-gray-600">

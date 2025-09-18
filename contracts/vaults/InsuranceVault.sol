@@ -88,6 +88,20 @@ contract InsuranceVault is ReentrancyGuard, AccessControl {
     }
 
     /**
+     * @notice Deposit funds directly into the vault for initial reserves
+     * @dev Only admin can deposit initial funds
+     */
+    function depositFunds() external payable onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (msg.value == 0) {
+            revert InvalidAmount();
+        }
+
+        totalReserves += msg.value;
+
+        emit ReservesDeposited(address(0), msg.value);
+    }
+
+    /**
      * @notice Check if the vault has sufficient reserves for a payout
      * @param payout The payout amount to check
      * @return bool Whether the vault can cover the payout
@@ -97,12 +111,11 @@ contract InsuranceVault is ReentrancyGuard, AccessControl {
     }
 
     /**
-     * @notice Pay out a claim to the policy holder
+     * @notice Pay a claim for an IL insurance policy
      * @param policyId The policy ID being claimed
-     * @param to The address to send the payout to
      * @param amount The amount to pay out
      */
-    function payClaim(uint256 policyId, address to, uint256 amount) external onlyRole(AVS_ROLE) nonReentrant {
+    function payClaim(uint256 policyId, uint256 amount) external onlyRole(AVS_ROLE) nonReentrant {
         if (amount == 0) {
             revert InvalidAmount();
         }
@@ -121,10 +134,17 @@ contract InsuranceVault is ReentrancyGuard, AccessControl {
         // Update reserves
         totalReserves -= amount;
 
-        // TODO: Implement actual token transfer
-        // For now, we'll just track the accounting
+        // Update claims tracking
+        totalClaimsPaid[address(0)] += amount;
 
-        emit ClaimPaid(policyId, to, amount);
+        // For MVP: Send ETH back to AVS manager (which will handle forwarding)
+        // In production: This would integrate with PolicyManager to get policy owner
+        (bool success,) = msg.sender.call{value: amount}("");
+        if (!success) {
+            revert InvalidAmount(); // Revert if transfer fails
+        }
+
+        emit ClaimPaid(policyId, msg.sender, amount);
     }
 
     // =============================================================================

@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wallet, DollarSign, AlertTriangle, Users, TrendingUp, TrendingDown } from "lucide-react";
+import { Wallet, DollarSign, AlertTriangle, Users, TrendingUp, TrendingDown, Shield, RefreshCw } from "lucide-react";
+import { useInsuranceVault } from "@/lib/contracts";
+import { formatEther } from "viem";
 import {
   Chart as ChartJS,
   CategoryScale,

@@ -4,6 +4,7 @@ import { createAppKit } from "@reown/appkit/react";
 import { WagmiProvider } from "wagmi";
 import { Config, cookieStorage, cookieToInitialState, createStorage, http } from "@wagmi/core";
 import { arbitrum, mainnet, polygon, base, sepolia } from "@reown/appkit/networks";
+import { foundry } from "viem/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { useEffect, useState } from "react";
@@ -11,10 +12,10 @@ import { useEffect, useState } from "react";
 // 1. Get projectId from environment or use a placeholder for development
 const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "demo-project-id";
 
-// 2. Create wagmiAdapter
+// 2. Create wagmiAdapter with local development support
 const wagmiAdapter = new WagmiAdapter({
   projectId,
-  networks: [mainnet, arbitrum, polygon, base],
+  networks: [foundry, sepolia, mainnet, arbitrum, polygon, base],
   storage: createStorage({
     storage: cookieStorage,
   }),
@@ -28,7 +29,7 @@ function initializeAppKit() {
   if (typeof window !== "undefined") {
     createAppKit({
       adapters: [wagmiAdapter],
-      networks: [mainnet, sepolia, arbitrum, polygon, base],
+      networks: [foundry, sepolia],
       projectId,
       metadata: {
         name: "Confidential IL Insurance Hook",
@@ -38,9 +39,9 @@ function initializeAppKit() {
       },
       features: {
         analytics: true,
-        socials: ["google"],
-        email: true,
-        emailShowWallets: true,
+        // socials: ["google"],
+        // email: true,
+        // emailShowWallets: true,
       },
       themeMode: "dark",
       themeVariables: {
@@ -50,7 +51,7 @@ function initializeAppKit() {
         "--w3m-color-mix-strength": 20,
         "--w3m-border-radius-master": "8px",
       },
-      defaultNetwork: mainnet,
+      defaultNetwork: sepolia,
 
       allWallets: "SHOW",
     });

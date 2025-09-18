@@ -1,0 +1,8 @@
+@openzeppelin/contracts/=/home/layintondeveloper/Desktop/Confidential-iImpermanent-Loss-Insurance-for-Lps/lib/openzeppelin-contracts/contracts/
+@eigenlayer/contracts/=/home/layintondeveloper/Desktop/Confidential-iImpermanent-Loss-Insurance-for-Lps/lib/eigenlayer-contracts/src/contracts/
+forge-std/=/home/layintondeveloper/Desktop/Confidential-iImpermanent-Loss-Insurance-for-Lps/lib/forge-std/src/
+v4-core/=/home/layintondeveloper/Desktop/Confidential-iImpermanent-Loss-Insurance-for-Lps/lib/v4-core/src/
+v4-periphery/=/home/layintondeveloper/Desktop/Confidential-iImpermanent-Loss-Insurance-for-Lps/lib/v4-periphery/src/
+permit2/=/home/layintondeveloper/Desktop/Confidential-iImpermanent-Loss-Insurance-for-Lps/lib/v4-periphery/lib/permit2/src/
+solmate/=/home/layintondeveloper/Desktop/Confidential-iImpermanent-Loss-Insurance-for-Lps/lib/v4-core/lib/solmate/src/
+@uniswap/v4-core/src/=/home/layintondeveloper/Desktop/Confidential-iImpermanent-Loss-Insurance-for-Lps/lib/v4-core/src/

@@ -1,0 +1,23 @@
+{
+  "name": "confidentialinsurance-server",
+  "version": "1.0.0",
+  "description": "Generated EigenCompute service for ConfidentialInsuranceSpec",
+  "private": true,
+  "scripts": {
+    "deploy": "npx @eigenlayer/compute-cli deploy --dockerfile ./Dockerfile --contract-path ./contracts/src/ConfidentialInsurance.sol",
+    "deploy:offchain": "npx @eigenlayer/compute-cli deploy --dockerfile ./Dockerfile --offchain",
+    "deploy:onchain": "npx @eigenlayer/compute-cli deploy --contract-path ./contracts/src/ConfidentialInsurance.sol --onchain",
+    "deploy:both": "npx @eigenlayer/compute-cli deploy --dockerfile ./Dockerfile --contract-path ./contracts/src/ConfidentialInsurance.sol --all",
+    "regenerate": "npx @eigenlayer/compute-cli gen IConfidentialInsuranceSpec.sol -l rust -o ."
+  },
+  "keywords": [
+    "eigencompute",
+    "eigenlayer",
+    "decentralized-compute",
+    "confidentialinsurance-server"
+  ],
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

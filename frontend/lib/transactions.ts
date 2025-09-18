@@ -9,8 +9,26 @@ import {
 } from "wagmi";
 import { toast } from "react-hot-toast";
 import { formatEther, parseEther, Address, Hash } from "viem";
-import { useAppStore } from "./store";
-import { POLICY_MANAGER_ABI, INSURANCE_VAULT_ABI, PAYOUT_VAULT_ABI, CONTRACT_ADDRESSES } from "./contracts";
+import { useAppStore } from "./store        console.log("Claim transaction submitted:", txHash);
+
+        // Import the public client for waiting for transaction receipt
+        const { createPublicClient, http } = await import("viem");
+        const { foundry, sepolia } = await import("viem/chains");
+
+        // Determine chain based on environment
+        const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111");
+        const chain = chainId === 31337 ? foundry : sepolia;
+
+        const publicClient = createPublicClient({
+          chain,
+          transport: http(process.env.NEXT_PUBLIC_RPC_URL),
+        });{
+  POLICY_MANAGER_ABI,
+  INSURANCE_VAULT_ABI,
+  PAYOUT_VAULT_ABI,
+  SIMPLE_V4_HOOK_ABI,
+  CONTRACT_ADDRESSES,
+} from "./contracts";
 import { useState, useCallback, useEffect } from "react";
 
 export interface TransactionConfig {
@@ -218,30 +236,139 @@ export function usePolicyTransactions() {
   });
 
   const mintPolicy = useCallback(
-    async (
-      poolAddress: Address,
-      amounts: [bigint, bigint],
-      params: [number, number, number], // [capBps, deductibleBps, duration]
-      merkleProof: Hash
-    ) => {
-      return writeContractAsync({
-        address: process.env.NEXT_PUBLIC_POLICY_MANAGER_ADDRESS as Address,
-        abi: POLICY_MANAGER_ABI,
-        functionName: "mintPolicy",
-        args: [poolAddress, amounts, params, merkleProof],
-      } as any);
+    async (recipient: Address, pool: Address, coverage: bigint, premium: bigint, commitment: Hash): Promise<Hash> => {
+      try {
+        // First, submit the transaction
+        const txHash = await writeContractAsync({
+          address: process.env.NEXT_PUBLIC_POLICY_MANAGER_ADDRESS as Address,
+          abi: POLICY_MANAGER_ABI,
+          functionName: "mintPolicy",
+          args: [recipient, pool, coverage, premium, commitment],
+        } as any);
+
+        console.log("Transaction submitted:", txHash);
+
+        // Import the public client for waiting for transaction receipt
+        const { createPublicClient, http } = await import("viem");
+        const { foundry, sepolia } = await import("viem/chains");
+        
+        // Determine chain based on environment
+        const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111");
+        const chain = chainId === 31337 ? foundry : sepolia;
+        
+        const publicClient = createPublicClient({
+          chain,
+          transport: http(process.env.NEXT_PUBLIC_RPC_URL),
+        });
+
+        // Wait for transaction receipt
+        console.log("Waiting for transaction confirmation...");
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+          timeout: 120000, // 2 minutes timeout
+        });
+
+        console.log("Transaction receipt:", receipt);        // Check if transaction was successful
+        if (receipt.status === "reverted") {
+          throw new Error("Transaction was reverted by the contract. Please check the contract state and try again.");
+        }
+
+        if (receipt.status !== "success") {
+          throw new Error("Transaction failed with unknown status");
+        }
+
+        console.log("Transaction confirmed successfully");
+        return txHash;
+      } catch (error: any) {
+        console.error("mintPolicy failed:", error);
+
+        // Handle specific error types
+        if (error.message?.includes("execution reverted")) {
+          throw new Error(
+            "Contract execution failed: The transaction was reverted. Please check your inputs and contract state."
+          );
+        }
+
+        if (error.message?.includes("insufficient funds")) {
+          throw new Error("Insufficient funds for transaction");
+        }
+
+        if (error.message?.includes("user rejected")) {
+          throw new Error("Transaction was rejected by user");
+        }
+
+        // Re-throw the error to be handled by the calling component
+        throw error;
+      }
     },
     [writeContractAsync]
   );
 
   const submitClaim = useCallback(
-    async (policyId: bigint, amount: bigint, merkleProof: Hash) => {
-      return writeContractAsync({
-        address: process.env.NEXT_PUBLIC_POLICY_MANAGER_ADDRESS as Address,
-        abi: POLICY_MANAGER_ABI,
-        functionName: "submitClaim",
-        args: [policyId, amount, merkleProof],
-      } as any);
+    async (policyId: bigint, amount: bigint, merkleProof: Hash): Promise<Hash> => {
+      try {
+        // First, submit the transaction
+        const txHash = await writeContractAsync({
+          address: process.env.NEXT_PUBLIC_POLICY_MANAGER_ADDRESS as Address,
+          abi: POLICY_MANAGER_ABI,
+          functionName: "submitClaim",
+          args: [policyId, amount, merkleProof],
+        } as any);
+
+        console.log("Claim transaction submitted:", txHash);
+
+        // Import the public client for waiting for transaction receipt
+        const { createPublicClient, http } = await import("viem");
+        const { sepolia } = await import("viem/chains");
+
+        const publicClient = createPublicClient({
+          chain: sepolia,
+          transport: http(process.env.NEXT_PUBLIC_RPC_URL),
+        });
+
+        // Wait for transaction receipt
+        console.log("Waiting for claim transaction confirmation...");
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+          timeout: 120000, // 2 minutes timeout
+        });
+
+        console.log("Claim transaction receipt:", receipt);
+
+        // Check if transaction was successful
+        if (receipt.status === "reverted") {
+          throw new Error(
+            "Claim transaction was reverted by the contract. Please check the claim validity and try again."
+          );
+        }
+
+        if (receipt.status !== "success") {
+          throw new Error("Claim transaction failed with unknown status");
+        }
+
+        console.log("Claim transaction confirmed successfully");
+        return txHash;
+      } catch (error: any) {
+        console.error("submitClaim failed:", error);
+
+        // Handle specific error types
+        if (error.message?.includes("execution reverted")) {
+          throw new Error(
+            "Claim execution failed: The transaction was reverted. Please check your claim details and policy status."
+          );
+        }
+
+        if (error.message?.includes("insufficient funds")) {
+          throw new Error("Insufficient funds for claim transaction");
+        }
+
+        if (error.message?.includes("user rejected")) {
+          throw new Error("Claim transaction was rejected by user");
+        }
+
+        // Re-throw the error to be handled by the calling component
+        throw error;
+      }
     },
     [writeContractAsync]
   );
@@ -251,6 +378,133 @@ export function usePolicyTransactions() {
     submitClaim,
     mintState,
     claimState,
+  };
+}
+
+// V4 Integration transaction hooks
+export function useV4PolicyTransactions() {
+  const { writeContractAsync } = useWriteContract();
+  const { address } = useAccount();
+
+  const addLiquidityWithInsurance = useCallback(
+    async (
+      token0: Address,
+      token1: Address,
+      fee: number,
+      tickLower: number,
+      tickUpper: number,
+      liquidityAmount: bigint,
+      coverage: bigint,
+      duration: bigint
+    ): Promise<Hash> => {
+      try {
+        if (!address) {
+          throw new Error("Wallet not connected");
+        }
+
+        // Encode insurance parameters in hookData
+        const { encodeAbiParameters } = await import("viem");
+
+        const hookData = encodeAbiParameters(
+          [
+            { name: "coverage", type: "uint256" },
+            { name: "duration", type: "uint256" },
+          ],
+          [coverage, duration]
+        );
+
+        // Call the V4Hook directly (simulating V4Router call)
+        const txHash = await writeContractAsync({
+          address: CONTRACT_ADDRESSES.HOOK as Address,
+          abi: SIMPLE_V4_HOOK_ABI,
+          functionName: "afterAddLiquidity",
+          args: [
+            // sender - use connected wallet address
+            address,
+            // poolKey
+            {
+              token0,
+              token1,
+              fee,
+              tickSpacing: 60,
+              hooks: CONTRACT_ADDRESSES.HOOK,
+            },
+            // params
+            {
+              tickLower,
+              tickUpper,
+              liquidityDelta: liquidityAmount,
+              salt: "0x0000000000000000000000000000000000000000000000000000000000000000",
+            },
+            // hookData
+            hookData,
+          ],
+        } as any);
+
+        console.log("V4 Liquidity + Insurance transaction submitted:", txHash);
+
+        // Import the public client for waiting for transaction receipt
+        const { createPublicClient, http } = await import("viem");
+        const { foundry, sepolia } = await import("viem/chains");
+
+        // Determine chain based on environment
+        const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "31337");
+        const chain = chainId === 31337 ? foundry : sepolia;
+
+        const publicClient = createPublicClient({
+          chain,
+          transport: http(process.env.NEXT_PUBLIC_RPC_URL),
+        });
+
+        // Wait for transaction receipt
+        console.log("Waiting for V4 transaction confirmation...");
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: txHash,
+          timeout: 120000, // 2 minutes timeout
+        });
+
+        console.log("V4 Transaction receipt:", receipt);
+
+        // Check if transaction was successful
+        if (receipt.status === "reverted") {
+          throw new Error(
+            "V4 Transaction was reverted by the contract. Please check the contract state and try again."
+          );
+        }
+
+        if (receipt.status !== "success") {
+          throw new Error("V4 Transaction failed with unknown status");
+        }
+
+        console.log("V4 Transaction confirmed successfully - Insurance policy created automatically!");
+        return txHash;
+      } catch (error: any) {
+        console.error("addLiquidityWithInsurance failed:", error);
+
+        // Handle specific error types
+        if (error.message?.includes("execution reverted")) {
+          throw new Error(
+            "V4 Contract execution failed: The transaction was reverted. Please check your inputs and hook configuration."
+          );
+        }
+
+        if (error.message?.includes("insufficient funds")) {
+          throw new Error("Insufficient funds for V4 transaction");
+        }
+
+        if (error.message?.includes("user rejected")) {
+          throw new Error("V4 Transaction was rejected by user");
+        }
+
+        // Re-throw the error to be handled by the calling component
+        throw error;
+      }
+    },
+    [writeContractAsync]
+  );
+
+  return {
+    addLiquidityWithInsurance,
   };
 }
 

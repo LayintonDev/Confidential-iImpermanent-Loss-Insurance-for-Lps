@@ -3,8 +3,8 @@ pragma solidity ^0.8.26;
 
 /**
  * @title FhenixComputeProxy
- * @notice Proxy contract for receiving and storing Fhenix FHE computation results
- * @dev This contract serves as the on-chain interface for Fhenix confidential computing
+ * @notice Proxy contract for receiving and storing real Fhenix FHE computation results
+ * @dev This contract interfaces with the Fhenix network for confidential computing
  */
 contract FhenixComputeProxy {
     // =============================================================================
@@ -99,7 +99,7 @@ contract FhenixComputeProxy {
             revert InvalidAttestation();
         }
 
-        // Verify the signature (basic validation for MVP)
+        // Verify the signature using enhanced validation for real FHE attestations
         if (!_verifyWorkerSignature(policyId, attestation, signature)) {
             revert InvalidSignature();
         }
@@ -114,9 +114,9 @@ contract FhenixComputeProxy {
     }
 
     /**
-     * @notice Verify a worker's signature on an attestation (mock for MVP)
+     * @notice Verify a worker's signature on a real FHE attestation
      * @param policyId The policy ID
-     * @param attestation The attestation data
+     * @param attestation The FHE attestation data
      * @param signature The worker's signature
      * @return bool Whether the signature is valid
      */
@@ -125,10 +125,41 @@ contract FhenixComputeProxy {
         view
         returns (bool)
     {
-        // TODO: Implement proper ECDSA signature verification
-        // For MVP, we'll do basic validation
-        return signature.length == 65 // Standard ECDSA signature length
-            && attestation.length > 0 && policyId > 0 && authorizedWorkers[msg.sender];
+        // Enhanced validation for real FHE attestations
+        if (signature.length != 65 || attestation.length == 0 || policyId == 0) {
+            return false;
+        }
+
+        if (!authorizedWorkers[msg.sender]) {
+            return false;
+        }
+
+        // Verify ECDSA signature
+        bytes32 messageHash = keccak256(abi.encodePacked(policyId, attestation));
+        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+
+        // Extract signature components
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+
+        assembly {
+            r := calldataload(add(signature.offset, 0))
+            s := calldataload(add(signature.offset, 32))
+            v := byte(0, calldataload(add(signature.offset, 64)))
+        }
+
+        // Adjust v if necessary
+        if (v < 27) {
+            v += 27;
+        }
+
+        // Recover signer address
+        address signer = ecrecover(ethSignedMessageHash, v, r, s);
+
+        // In production, you would verify against the worker's registered public key
+        // For now, we verify that the signer is the authorized worker
+        return signer == msg.sender && signer != address(0);
     }
 
     // =============================================================================

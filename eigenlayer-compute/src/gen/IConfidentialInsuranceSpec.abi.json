@@ -1,0 +1,202 @@
+[
+  {
+    "type": "function",
+    "name": "aggregateAttestations",
+    "inputs": [
+      {
+        "name": "attestations",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "signatures",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
+      },
+      {
+        "name": "operatorPublicKeys",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
+      },
+      {
+        "name": "threshold",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "aggregatedResult",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "isConsensusReached",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "calculateImpermanentLoss",
+    "inputs": [
+      {
+        "name": "initialTokenAAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "initialTokenBAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "currentTokenAPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "currentTokenBPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "initialTokenAPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "initialTokenBPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "poolFeeRate",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "impermanentLoss",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "shouldPayout",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "calculatePayout",
+    "inputs": [
+      {
+        "name": "policyId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "impermanentLoss",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "coverageAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "deductible",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "coverageRatio",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "payoutAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "validateOraclePrices",
+    "inputs": [
+      {
+        "name": "priceData",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "timestamps",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "deviationThreshold",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isValid",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "validatedPrices",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "verifyEncryptedAttestation",
+    "inputs": [
+      {
+        "name": "encryptedAttestation",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "proof",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "publicInputs",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isValid",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "decryptedResult",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  }
+]

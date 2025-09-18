@@ -89,10 +89,10 @@ contract InsuranceVaultTest is Test {
         vault.depositPremium(pool1, 2 ether);
 
         vm.expectEmit(true, true, false, true);
-        emit ClaimPaid(policyId, user, claimAmount);
+        emit ClaimPaid(policyId, avs, claimAmount); // The vault sends funds to the AVS (msg.sender)
 
         vm.prank(avs);
-        vault.payClaim(policyId, user, claimAmount);
+        vault.payClaim(policyId, claimAmount);
 
         assertTrue(vault.claimsPaid(policyId));
         assertEq(vault.totalReserves(), 1 ether); // Should be reduced
@@ -106,7 +106,7 @@ contract InsuranceVaultTest is Test {
 
         vm.prank(user);
         vm.expectRevert();
-        vault.payClaim(1, user, 1 ether);
+        vault.payClaim(1, 1 ether);
     }
 
     function testCannotPayClaimTwice() public {
@@ -116,10 +116,10 @@ contract InsuranceVaultTest is Test {
         vault.depositPremium(pool1, 2 ether);
 
         vm.startPrank(avs);
-        vault.payClaim(policyId, user, 1 ether);
+        vault.payClaim(policyId, 1 ether);
 
         vm.expectRevert();
-        vault.payClaim(policyId, user, 1 ether);
+        vault.payClaim(policyId, 1 ether);
         vm.stopPrank();
     }
 
@@ -129,7 +129,7 @@ contract InsuranceVaultTest is Test {
 
         vm.prank(avs);
         vm.expectRevert();
-        vault.payClaim(1, user, 2 ether); // More than available
+        vault.payClaim(1, 2 ether); // More than available
     }
 
     function testFuzzDepositPremium(uint256 amount1, uint256 amount2) public {
@@ -174,7 +174,7 @@ contract InsuranceVaultTest is Test {
 
         // Test new AVS can pay claims
         vm.prank(newAVS);
-        vault.payClaim(1, user, 0.5 ether);
+        vault.payClaim(1, 0.5 ether);
 
         assertTrue(vault.claimsPaid(1));
     }
@@ -186,7 +186,7 @@ contract InsuranceVaultTest is Test {
         vm.stopPrank();
 
         vm.prank(avs);
-        vault.payClaim(1, user, 1.5 ether); // 1.5 ether paid out
+        vault.payClaim(1, 1.5 ether); // 1.5 ether paid out
 
         assertEq(vault.totalPremiumsCollected(pool1), 5 ether);
         // Note: The current vault design has a limitation - it reduces totalReserves globally

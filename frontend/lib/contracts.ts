@@ -2,6 +2,12 @@ import { Address } from "viem";
 import { useCallback, useState } from "react";
 import { useReadContract, useWriteContract, useWatchContractEvent } from "wagmi";
 
+// Import contract ABIs
+import INSURANCE_VAULT_ABI from "./abi/InsuranceVault.json";
+
+// Export the ABI for other modules
+export { INSURANCE_VAULT_ABI };
+
 // Updated Contract ABIs for deployed Sepolia contracts
 
 export const CONFIDENTIAL_IL_HOOK_ABI = [
@@ -299,363 +305,1055 @@ export const CONFIDENTIAL_IL_HOOK_ABI = [
   },
 ] as const;
 
-export const INSURANCE_VAULT_ABI = [
-  // Core functions
-  {
-    type: "function",
-    name: "depositPremium",
-    inputs: [
-      { name: "pool", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "solventFor",
-    inputs: [{ name: "payout", type: "uint256" }],
-    outputs: [{ type: "bool" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "payClaim",
-    inputs: [
-      { name: "policyId", type: "uint256" },
-      { name: "to", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  // State getters
-  {
-    type: "function",
-    name: "reserves",
-    inputs: [{ name: "pool", type: "address" }],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "totalReserves",
-    inputs: [],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "totalPremiumsCollected",
-    inputs: [{ name: "pool", type: "address" }],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "totalClaimsPaid",
-    inputs: [{ name: "pool", type: "address" }],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "claimsPaid",
-    inputs: [{ name: "policyId", type: "uint256" }],
-    outputs: [{ type: "bool" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "getReserveRatio",
-    inputs: [{ name: "pool", type: "address" }],
-    outputs: [{ name: "ratio", type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "getVaultStats",
-    inputs: [{ name: "pool", type: "address" }],
-    outputs: [
-      { name: "totalReserves_", type: "uint256" },
-      { name: "totalPremiums", type: "uint256" },
-      { name: "totalClaims", type: "uint256" },
-      { name: "reserveRatio", type: "uint256" },
-    ],
-    stateMutability: "view",
-  },
-  // Events
-  {
-    type: "event",
-    name: "PremiumSkimmed",
-    inputs: [
-      { name: "pool", type: "address", indexed: true },
-      { name: "amount", type: "uint256" },
-    ],
-  },
-  {
-    type: "event",
-    name: "ClaimPaid",
-    inputs: [
-      { name: "policyId", type: "uint256", indexed: true },
-      { name: "to", type: "address", indexed: true },
-      { name: "amount", type: "uint256" },
-    ],
-  },
-  {
-    type: "event",
-    name: "ReservesDeposited",
-    inputs: [
-      { name: "pool", type: "address", indexed: true },
-      { name: "amount", type: "uint256" },
-    ],
-  },
-] as const;
-
 export const POLICY_MANAGER_ABI = [
-  // Core policy management
   {
-    type: "function",
-    name: "mintPolicy",
     inputs: [
-      { name: "lp", type: "address" },
-      { name: "pool", type: "address" },
       {
-        name: "params",
-        type: "tuple",
-        components: [
-          { name: "deductibleBps", type: "uint256" },
-          { name: "capBps", type: "uint256" },
-          { name: "premiumBps", type: "uint256" },
-          { name: "duration", type: "uint256" },
-          { name: "pool", type: "address" },
-        ],
+        internalType: "address",
+        name: "admin",
+        type: "address",
       },
-      { name: "entryCommit", type: "bytes32" },
-    ],
-    outputs: [{ name: "policyId", type: "uint256" }],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "burnPolicy",
-    inputs: [{ name: "policyId", type: "uint256" }],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  // Policy queries
-  {
-    type: "function",
-    name: "ownerOfPolicy",
-    inputs: [{ name: "policyId", type: "uint256" }],
-    outputs: [{ name: "owner", type: "address" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "getPolicy",
-    inputs: [{ name: "policyId", type: "uint256" }],
-    outputs: [
       {
-        type: "tuple",
-        components: [
-          { name: "lp", type: "address" },
-          { name: "pool", type: "address" },
-          {
-            name: "params",
-            type: "tuple",
-            components: [
-              { name: "deductibleBps", type: "uint256" },
-              { name: "capBps", type: "uint256" },
-              { name: "premiumBps", type: "uint256" },
-              { name: "duration", type: "uint256" },
-              { name: "pool", type: "address" },
-            ],
-          },
-          { name: "entryCommit", type: "bytes32" },
-          { name: "createdAt", type: "uint256" },
-          { name: "epoch", type: "uint256" },
-          { name: "active", type: "bool" },
-        ],
+        internalType: "string",
+        name: "initialURI",
+        type: "string",
       },
     ],
-    stateMutability: "view",
+    stateMutability: "nonpayable",
+    type: "constructor",
   },
   {
-    type: "function",
-    name: "getPoliciesByLP",
-    inputs: [{ name: "lp", type: "address" }],
-    outputs: [{ type: "uint256[]" }],
-    stateMutability: "view",
+    inputs: [
+      {
+        internalType: "address",
+        name: "account",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
+    ],
+    name: "ERC1155InsufficientBalance",
+    type: "error",
   },
   {
-    type: "function",
-    name: "getPoliciesByPool",
-    inputs: [{ name: "pool", type: "address" }],
-    outputs: [{ type: "uint256[]" }],
-    stateMutability: "view",
+    inputs: [
+      {
+        internalType: "address",
+        name: "approver",
+        type: "address",
+      },
+    ],
+    name: "ERC1155InvalidApprover",
+    type: "error",
   },
   {
-    type: "function",
-    name: "isValidPolicy",
-    inputs: [{ name: "policyId", type: "uint256" }],
-    outputs: [{ name: "valid", type: "bool" }],
-    stateMutability: "view",
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "idsLength",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "valuesLength",
+        type: "uint256",
+      },
+    ],
+    name: "ERC1155InvalidArrayLength",
+    type: "error",
   },
   {
-    type: "function",
-    name: "isPolicyExpired",
-    inputs: [{ name: "policyId", type: "uint256" }],
-    outputs: [{ name: "expired", type: "bool" }],
-    stateMutability: "view",
+    inputs: [
+      {
+        internalType: "address",
+        name: "operator",
+        type: "address",
+      },
+    ],
+    name: "ERC1155InvalidOperator",
+    type: "error",
   },
-  // State variables
   {
-    type: "function",
-    name: "currentPolicyId",
+    inputs: [
+      {
+        internalType: "address",
+        name: "receiver",
+        type: "address",
+      },
+    ],
+    name: "ERC1155InvalidReceiver",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "sender",
+        type: "address",
+      },
+    ],
+    name: "ERC1155InvalidSender",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "operator",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "owner",
+        type: "address",
+      },
+    ],
+    name: "ERC1155MissingApprovalForAll",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "spender",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "allowance",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "needed",
+        type: "uint256",
+      },
+    ],
+    name: "ERC20InsufficientAllowance",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "sender",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "balance",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "needed",
+        type: "uint256",
+      },
+    ],
+    name: "ERC20InsufficientBalance",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "approver",
+        type: "address",
+      },
+    ],
+    name: "ERC20InvalidApprover",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "receiver",
+        type: "address",
+      },
+    ],
+    name: "ERC20InvalidReceiver",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "sender",
+        type: "address",
+      },
+    ],
+    name: "ERC20InvalidSender",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "spender",
+        type: "address",
+      },
+    ],
+    name: "ERC20InvalidSpender",
+    type: "error",
+  },
+  {
     inputs: [],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
+    name: "InvalidPolicyDuration",
+    type: "error",
   },
   {
-    type: "function",
-    name: "policies",
-    inputs: [{ name: "policyId", type: "uint256" }],
-    outputs: [
-      { name: "lp", type: "address" },
-      { name: "pool", type: "address" },
-      {
-        name: "params",
-        type: "tuple",
-        components: [
-          { name: "deductibleBps", type: "uint256" },
-          { name: "capBps", type: "uint256" },
-          { name: "premiumBps", type: "uint256" },
-          { name: "duration", type: "uint256" },
-          { name: "pool", type: "address" },
-        ],
-      },
-      { name: "entryCommit", type: "bytes32" },
-      { name: "createdAt", type: "uint256" },
-      { name: "epoch", type: "uint256" },
-      { name: "active", type: "bool" },
-    ],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "lpPolicies",
-    inputs: [
-      { name: "lp", type: "address" },
-      { name: "index", type: "uint256" },
-    ],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "poolPolicies",
-    inputs: [
-      { name: "pool", type: "address" },
-      { name: "index", type: "uint256" },
-    ],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "defaultParams",
     inputs: [],
-    outputs: [
-      { name: "deductibleBps", type: "uint256" },
-      { name: "capBps", type: "uint256" },
-      { name: "premiumBps", type: "uint256" },
-      { name: "duration", type: "uint256" },
-      { name: "pool", type: "address" },
-    ],
-    stateMutability: "view",
+    name: "InvalidPolicyParams",
+    type: "error",
   },
-  // Admin functions
   {
-    type: "function",
-    name: "updateDefaultParams",
+    inputs: [],
+    name: "PolicyNotActive",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ReentrancyGuardReentrantCall",
+    type: "error",
+  },
+  {
     inputs: [
       {
-        name: "params",
-        type: "tuple",
-        components: [
-          { name: "deductibleBps", type: "uint256" },
-          { name: "capBps", type: "uint256" },
-          { name: "premiumBps", type: "uint256" },
-          { name: "duration", type: "uint256" },
-          { name: "pool", type: "address" },
-        ],
+        internalType: "uint8",
+        name: "bits",
+        type: "uint8",
+      },
+      {
+        internalType: "uint256",
+        name: "value",
+        type: "uint256",
       },
     ],
-    outputs: [],
-    stateMutability: "nonpayable",
+    name: "SafeCastOverflowedUintDowncast",
+    type: "error",
   },
   {
-    type: "function",
-    name: "setBaseURI",
-    inputs: [{ name: "uri", type: "string" }],
-    outputs: [],
-    stateMutability: "nonpayable",
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "account",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "operator",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "bool",
+        name: "approved",
+        type: "bool",
+      },
+    ],
+    name: "ApprovalForAll",
+    type: "event",
   },
-  // ERC1155 functions we need
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "policyId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "pool",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "ClaimPaid",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "policyId",
+        type: "uint256",
+      },
+    ],
+    name: "PolicyCancelled",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "policyId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "pool",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "coverage",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "premium",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "commitment",
+        type: "uint256",
+      },
+    ],
+    name: "PolicyMinted",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "previousAdminRole",
+        type: "bytes32",
+      },
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "newAdminRole",
+        type: "bytes32",
+      },
+    ],
+    name: "RoleAdminChanged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "account",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "sender",
+        type: "address",
+      },
+    ],
+    name: "RoleGranted",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "account",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "sender",
+        type: "address",
+      },
+    ],
+    name: "RoleRevoked",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "operator",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "from",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[]",
+        name: "ids",
+        type: "uint256[]",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[]",
+        name: "values",
+        type: "uint256[]",
+      },
+    ],
+    name: "TransferBatch",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "operator",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "from",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "value",
+        type: "uint256",
+      },
+    ],
+    name: "TransferSingle",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "string",
+        name: "value",
+        type: "string",
+      },
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
+    ],
+    name: "URI",
+    type: "event",
+  },
+  {
+    inputs: [],
+    name: "ADMIN_ROLE",
+    outputs: [
+      {
+        internalType: "bytes32",
+        name: "",
+        type: "bytes32",
+      },
+    ],
+    stateMutability: "view",
     type: "function",
+  },
+  {
+    inputs: [],
+    name: "DEFAULT_ADMIN_ROLE",
+    outputs: [
+      {
+        internalType: "bytes32",
+        name: "",
+        type: "bytes32",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "USDC",
+    outputs: [
+      {
+        internalType: "contract IERC20",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "account",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
+    ],
     name: "balanceOf",
-    inputs: [
-      { name: "account", type: "address" },
-      { name: "id", type: "uint256" },
-    ],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "uri",
-    inputs: [{ name: "id", type: "uint256" }],
-    outputs: [{ type: "string" }],
-    stateMutability: "view",
-  },
-  // Events
-  {
-    type: "event",
-    name: "PolicyCreated",
-    inputs: [
-      { name: "policyId", type: "uint256", indexed: true },
-      { name: "lp", type: "address", indexed: true },
-      { name: "pool", type: "address", indexed: true },
-      { name: "epoch", type: "uint256" },
-    ],
-  },
-  {
-    type: "event",
-    name: "PolicyBurned",
-    inputs: [
-      { name: "policyId", type: "uint256", indexed: true },
-      { name: "lp", type: "address", indexed: true },
-    ],
-  },
-  {
-    type: "event",
-    name: "PolicyUpdated",
-    inputs: [
-      { name: "policyId", type: "uint256", indexed: true },
+    outputs: [
       {
-        name: "params",
-        type: "tuple",
-        components: [
-          { name: "deductibleBps", type: "uint256" },
-          { name: "capBps", type: "uint256" },
-          { name: "premiumBps", type: "uint256" },
-          { name: "duration", type: "uint256" },
-          { name: "pool", type: "address" },
-        ],
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
       },
     ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address[]",
+        name: "accounts",
+        type: "address[]",
+      },
+      {
+        internalType: "uint256[]",
+        name: "ids",
+        type: "uint256[]",
+      },
+    ],
+    name: "balanceOfBatch",
+    outputs: [
+      {
+        internalType: "uint256[]",
+        name: "",
+        type: "uint256[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "policyId",
+        type: "uint256",
+      },
+    ],
+    name: "cancelPolicy",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "defaultParams",
+    outputs: [
+      {
+        internalType: "uint16",
+        name: "deductibleBps",
+        type: "uint16",
+      },
+      {
+        internalType: "uint16",
+        name: "capBps",
+        type: "uint16",
+      },
+      {
+        internalType: "uint256",
+        name: "maxCoverage",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "minCoverage",
+        type: "uint256",
+      },
+      {
+        internalType: "uint32",
+        name: "maxDurationDays",
+        type: "uint32",
+      },
+      {
+        internalType: "uint32",
+        name: "minDurationDays",
+        type: "uint32",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
+    ],
+    name: "getRoleAdmin",
+    outputs: [
+      {
+        internalType: "bytes32",
+        name: "",
+        type: "bytes32",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
+      {
+        internalType: "address",
+        name: "account",
+        type: "address",
+      },
+    ],
+    name: "grantRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
+      {
+        internalType: "address",
+        name: "account",
+        type: "address",
+      },
+    ],
+    name: "hasRole",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "account",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "operator",
+        type: "address",
+      },
+    ],
+    name: "isApprovedForAll",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "pool",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "coverage",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "premium",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "commitment",
+        type: "uint256",
+      },
+    ],
+    name: "mintPolicy",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "nextPolicyId",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "policyId",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "claimAmount",
+        type: "uint256",
+      },
+    ],
+    name: "payoutClaim",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "policies",
+    outputs: [
+      {
+        internalType: "address",
+        name: "pool",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "coverage",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "premium",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "startTime",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "endTime",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "commitment",
+        type: "uint256",
+      },
+      {
+        internalType: "bool",
+        name: "isActive",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
+      {
+        internalType: "address",
+        name: "callerConfirmation",
+        type: "address",
+      },
+    ],
+    name: "renounceRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "role",
+        type: "bytes32",
+      },
+      {
+        internalType: "address",
+        name: "account",
+        type: "address",
+      },
+    ],
+    name: "revokeRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "from",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256[]",
+        name: "ids",
+        type: "uint256[]",
+      },
+      {
+        internalType: "uint256[]",
+        name: "values",
+        type: "uint256[]",
+      },
+      {
+        internalType: "bytes",
+        name: "data",
+        type: "bytes",
+      },
+    ],
+    name: "safeBatchTransferFrom",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "from",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "value",
+        type: "uint256",
+      },
+      {
+        internalType: "bytes",
+        name: "data",
+        type: "bytes",
+      },
+    ],
+    name: "safeTransferFrom",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "operator",
+        type: "address",
+      },
+      {
+        internalType: "bool",
+        name: "approved",
+        type: "bool",
+      },
+    ],
+    name: "setApprovalForAll",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        components: [
+          {
+            internalType: "uint16",
+            name: "deductibleBps",
+            type: "uint16",
+          },
+          {
+            internalType: "uint16",
+            name: "capBps",
+            type: "uint16",
+          },
+          {
+            internalType: "uint256",
+            name: "maxCoverage",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "minCoverage",
+            type: "uint256",
+          },
+          {
+            internalType: "uint32",
+            name: "maxDurationDays",
+            type: "uint32",
+          },
+          {
+            internalType: "uint32",
+            name: "minDurationDays",
+            type: "uint32",
+          },
+        ],
+        internalType: "struct PolicyManager.PolicyParams",
+        name: "params",
+        type: "tuple",
+      },
+    ],
+    name: "setDefaultParams",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes4",
+        name: "interfaceId",
+        type: "bytes4",
+      },
+    ],
+    name: "supportsInterface",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
+    ],
+    name: "uri",
+    outputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
   },
 ] as const;
 
@@ -965,30 +1663,167 @@ export const PAYOUT_VAULT_ABI = [
   },
 ] as const;
 
+// SimpleV4Hook ABI for V4 integration
+export const SIMPLE_V4_HOOK_ABI = [
+  {
+    type: "function",
+    name: "afterAddLiquidity",
+    inputs: [
+      { name: "sender", type: "address" },
+      {
+        name: "key",
+        type: "tuple",
+        components: [
+          { name: "token0", type: "address" },
+          { name: "token1", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "tickSpacing", type: "int24" },
+          { name: "hooks", type: "address" },
+        ],
+      },
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "tickLower", type: "int24" },
+          { name: "tickUpper", type: "int24" },
+          { name: "liquidityDelta", type: "int256" },
+          { name: "salt", type: "bytes32" },
+        ],
+      },
+      { name: "hookData", type: "bytes" },
+    ],
+    outputs: [{ type: "bytes4" }],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "afterSwap",
+    inputs: [
+      { name: "sender", type: "address" },
+      {
+        name: "key",
+        type: "tuple",
+        components: [
+          { name: "token0", type: "address" },
+          { name: "token1", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "tickSpacing", type: "int24" },
+          { name: "hooks", type: "address" },
+        ],
+      },
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "zeroForOne", type: "bool" },
+          { name: "amountSpecified", type: "int256" },
+          { name: "sqrtPriceLimitX96", type: "uint160" },
+        ],
+      },
+      { name: "amount0Delta", type: "int256" },
+      { name: "amount1Delta", type: "int256" },
+      { name: "hookData", type: "bytes" },
+    ],
+    outputs: [{ type: "bytes4" }],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "getHookPermissions",
+    inputs: [],
+    outputs: [{ type: "uint16" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isV4Compatible",
+    inputs: [],
+    outputs: [{ type: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "event",
+    name: "InsurancePolicyCreated",
+    inputs: [
+      { name: "poolAddress", type: "address", indexed: true },
+      { name: "lpAddress", type: "address", indexed: true },
+      { name: "policyId", type: "uint256", indexed: true },
+      { name: "coverage", type: "uint256", indexed: false },
+      { name: "duration", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "PremiumExtracted",
+    inputs: [
+      { name: "poolAddress", type: "address", indexed: true },
+      { name: "swapper", type: "address", indexed: true },
+      { name: "volume", type: "uint256", indexed: false },
+      { name: "premium", type: "uint256", indexed: false },
+    ],
+  },
+] as const;
+
+// Mock V4Router ABI for testing (simplified interface)
+export const V4_ROUTER_ABI = [
+  {
+    type: "function",
+    name: "addLiquidity",
+    inputs: [
+      {
+        name: "poolKey",
+        type: "tuple",
+        components: [
+          { name: "token0", type: "address" },
+          { name: "token1", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "tickSpacing", type: "int24" },
+          { name: "hooks", type: "address" },
+        ],
+      },
+      {
+        name: "liquidityParams",
+        type: "tuple",
+        components: [
+          { name: "tickLower", type: "int24" },
+          { name: "tickUpper", type: "int24" },
+          { name: "liquidityDelta", type: "int256" },
+          { name: "salt", type: "bytes32" },
+        ],
+      },
+      { name: "hookData", type: "bytes" },
+    ],
+    outputs: [{ type: "uint256" }],
+    stateMutability: "payable",
+  },
+] as const;
+
 // Contract addresses from environment variables
 export const CONTRACT_ADDRESSES = {
   HOOK: process.env.NEXT_PUBLIC_HOOK_ADDRESS as Address,
+  SIMPLE_V4_HOOK: process.env.NEXT_PUBLIC_SIMPLE_V4_HOOK_ADDRESS as Address,
+  CONFIDENTIAL_IL_HOOK: process.env.NEXT_PUBLIC_CONFIDENTIAL_IL_HOOK_ADDRESS as Address,
+  V4_ROUTER: process.env.NEXT_PUBLIC_HOOK_ADDRESS as Address, // For testing, use hook directly
   VAULT: process.env.NEXT_PUBLIC_VAULT_ADDRESS as Address,
   POLICY_MANAGER: process.env.NEXT_PUBLIC_POLICY_MANAGER_ADDRESS as Address,
   AVS_MANAGER: process.env.NEXT_PUBLIC_AVS_MANAGER_ADDRESS as Address,
+  EIGEN_AVS_MANAGER: process.env.NEXT_PUBLIC_EIGEN_AVS_MANAGER_ADDRESS as Address,
   FHENIX_PROXY: process.env.NEXT_PUBLIC_FHENIX_PROXY_ADDRESS as Address,
+  FHENIX_COMPUTE_PROXY: process.env.NEXT_PUBLIC_FHENIX_COMPUTE_PROXY_ADDRESS as Address,
   PAYOUT_VAULT: process.env.NEXT_PUBLIC_PAYOUT_VAULT_ADDRESS as Address,
+  INSURANCE_VAULT: process.env.NEXT_PUBLIC_INSURANCE_VAULT_ADDRESS as Address,
 } as const;
 
-// Contract deployment info for verification
+// Contract deployment info for verification - dynamically determined
 export const DEPLOYMENT_INFO = {
-  CHAIN_ID: 11155111, // Sepolia
-  BLOCK_NUMBER: 7387624, // Deployment block
-  ADDRESSES: {
-    HOOK: "0x71c0C5463a719ACFfCD3Cacabc6952d35695a358" as Address,
-    VAULT: "0x6399Afbe925A2b80269d3A455270d7d0d62b5159" as Address,
-    POLICY_MANAGER: "0x9146E9a3A04c39B0A30709A240f542B05B9fa1a3" as Address,
-    AVS_MANAGER: "0x2746E0dE6c874d278412BCbb334AE2debb59B766" as Address,
-    FHENIX_PROXY: "0xf8788c926645761347cAe6e482a8CF4Aa00B552c" as Address,
-    PAYOUT_VAULT: "0xa9718bCD97F4094c17A66dbca64C2295a0ae1108" as Address,
-    FEE_SPLITTER: "0x8Da8B8B5Be27Bc66Fc6B9BdCDE8DfE40073F2e11" as Address,
-  },
-  ETHERSCAN_BASE: "https://sepolia.etherscan.io",
+  CHAIN_ID: parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111"),
+  BLOCK_NUMBER: parseInt(process.env.NEXT_PUBLIC_DEPLOYMENT_BLOCK || "0"),
+  ADDRESSES: CONTRACT_ADDRESSES, // Use dynamic addresses
+  ETHERSCAN_BASE:
+    parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111") === 31337
+      ? "http://localhost:8545" // Local Anvil
+      : "https://sepolia.etherscan.io", // Sepolia
 } as const;
 
 // Utility types for TypeScript integration
@@ -1101,55 +1936,6 @@ export function useConfidentialILHook() {
   return {
     watchPolicyCreated,
     watchClaimRequested,
-    isWritePending,
-  };
-}
-
-// Insurance Vault interaction hook
-export function useInsuranceVault() {
-  const { data: totalReserves } = useReadContract({
-    address: CONTRACT_ADDRESSES.VAULT as `0x${string}`,
-    abi: INSURANCE_VAULT_ABI,
-    functionName: "totalReserves",
-  });
-
-  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
-
-  const getPoolReserves = useCallback((pool: string) => {
-    return useReadContract({
-      address: CONTRACT_ADDRESSES.VAULT as `0x${string}`,
-      abi: INSURANCE_VAULT_ABI,
-      functionName: "reserves",
-      args: [pool as `0x${string}`],
-    });
-  }, []);
-
-  const checkSolvency = useCallback((payout: bigint) => {
-    return useReadContract({
-      address: CONTRACT_ADDRESSES.VAULT as `0x${string}`,
-      abi: INSURANCE_VAULT_ABI,
-      functionName: "solventFor",
-      args: [payout],
-    });
-  }, []);
-
-  const depositPremium = useCallback(
-    async (pool: string, amount: bigint) => {
-      return writeContractAsync({
-        address: CONTRACT_ADDRESSES.VAULT as `0x${string}`,
-        abi: INSURANCE_VAULT_ABI,
-        functionName: "depositPremium",
-        args: [pool, amount],
-      } as any);
-    },
-    [writeContractAsync]
-  );
-
-  return {
-    totalReserves,
-    getPoolReserves,
-    checkSolvency,
-    depositPremium,
     isWritePending,
   };
 }
@@ -1324,5 +2110,118 @@ export function useGasEstimation() {
   return {
     estimateGas,
     gasPrice,
+  };
+}
+
+// InsuranceVault interaction hook
+export function useInsuranceVault() {
+  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
+
+  const getVaultStats = useCallback((pool: string) => {
+    return useReadContract({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      functionName: "getVaultStats",
+      args: [pool as `0x${string}`],
+    });
+  }, []);
+
+  const getPolicyClaimInfo = useCallback((policyId: bigint) => {
+    return useReadContract({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      functionName: "getPolicyClaimInfo",
+      args: [policyId],
+    });
+  }, []);
+
+  const validateClaim = useCallback((policyId: bigint, amount: bigint) => {
+    return useReadContract({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      functionName: "validateClaim",
+      args: [policyId, amount],
+    });
+  }, []);
+
+  const checkSolvency = useCallback((payout: bigint) => {
+    // For backwards compatibility - this checks if vault has enough reserves
+    return useReadContract({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      functionName: "reserves",
+      args: ["0x0000000000000000000000000000000000000000"], // Default pool for now
+    });
+  }, []);
+
+  const getTotalPremiums = useCallback((pool: string) => {
+    return useReadContract({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      functionName: "totalPremiumsCollected",
+      args: [pool as `0x${string}`],
+    });
+  }, []);
+
+  const getReserves = useCallback((pool: string) => {
+    return useReadContract({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      functionName: "reserves",
+      args: [pool as `0x${string}`],
+    });
+  }, []);
+
+  const depositFunds = useCallback(
+    async (amount: bigint) => {
+      return writeContractAsync({
+        address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+        abi: INSURANCE_VAULT_ABI,
+        functionName: "depositFunds",
+        value: amount,
+      } as any);
+    },
+    [writeContractAsync]
+  );
+
+  const watchClaimPaid = useCallback((callback: (log: any) => void) => {
+    return useWatchContractEvent({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      eventName: "ClaimPaid",
+      onLogs: callback,
+    });
+  }, []);
+
+  const watchPremiumDeposited = useCallback((callback: (log: any) => void) => {
+    return useWatchContractEvent({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      eventName: "PremiumDeposited",
+      onLogs: callback,
+    });
+  }, []);
+
+  const watchFundsDeposited = useCallback((callback: (log: any) => void) => {
+    return useWatchContractEvent({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      eventName: "FundsDeposited",
+      onLogs: callback,
+    });
+  }, []);
+
+  return {
+    getVaultStats,
+    getPolicyClaimInfo,
+    validateClaim,
+    checkSolvency,
+    getTotalPremiums,
+    getReserves,
+    depositFunds,
+    watchClaimPaid,
+    watchPremiumDeposited,
+    watchFundsDeposited,
+    isWritePending,
   };
 }

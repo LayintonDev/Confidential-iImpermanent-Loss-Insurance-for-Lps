@@ -56,7 +56,7 @@ contract PolicyManagerFoundryTest is Test {
 
         // Mint policy as hook role (admin has hook role)
         vm.prank(admin);
-        uint256 policyId = policyManager.mintPolicy(lp, pool, params, entryCommit);
+        uint256 policyId = policyManager.mintPolicy(lp, pool, 1 ether, 0.01 ether, entryCommit);
 
         // Verify policy was minted
         assertEq(policyManager.balanceOf(lp, policyId), 1);
@@ -78,7 +78,7 @@ contract PolicyManagerFoundryTest is Test {
         // Try to mint as non-hook role
         vm.prank(lp);
         vm.expectRevert();
-        policyManager.mintPolicy(lp, pool, params, entryCommit);
+        policyManager.mintPolicy(lp, pool, 1 ether, 0.01 ether, entryCommit);
     }
 
     /**
@@ -92,34 +92,35 @@ contract PolicyManagerFoundryTest is Test {
         premiumBps = bound(premiumBps, 1, 1000); // 0.01% to 10%
         duration = bound(duration, 1000, 1000000); // 1K to 1M blocks
 
-        PolicyManager.PolicyParams memory params = PolicyManager.PolicyParams({
-            deductibleBps: deductibleBps,
-            capBps: capBps,
-            premiumBps: premiumBps,
-            duration: duration,
-            pool: pool
-        });
-
         bytes32 entryCommit = keccak256("test_entry_data");
 
         vm.prank(admin);
-        uint256 policyId = policyManager.mintPolicy(lp, pool, params, entryCommit);
+        uint256 policyId = policyManager.mintPolicy(lp, pool, 1 ether, 0.01 ether, entryCommit);
 
         // Verify policy was created correctly
         assertTrue(policyManager.isPolicyActive(policyId));
         assertEq(policyManager.ownerOfPolicy(policyId), lp);
 
-        // Verify parameters are stored correctly
+        // Verify parameters are stored correctly (mintPolicy uses defaultParams, not custom params)
         (address storedLp, address storedPool, PolicyManager.PolicyParams memory storedParams,,,,) =
             policyManager.policies(policyId);
 
+        // Get default params to compare against (returned as tuple, not struct)
+        (
+            uint256 defaultDeductibleBps,
+            uint256 defaultCapBps,
+            uint256 defaultPremiumBps,
+            uint256 defaultDuration,
+            address defaultPool
+        ) = policyManager.defaultParams();
+
         assertEq(storedLp, lp);
         assertEq(storedPool, pool);
-        assertEq(storedParams.deductibleBps, deductibleBps);
-        assertEq(storedParams.capBps, capBps);
-        assertEq(storedParams.premiumBps, premiumBps);
-        assertEq(storedParams.duration, duration);
-        assertEq(storedParams.pool, pool);
+        assertEq(storedParams.deductibleBps, defaultDeductibleBps); // Should match defaults, not fuzz inputs
+        assertEq(storedParams.capBps, defaultCapBps);
+        assertEq(storedParams.premiumBps, defaultPremiumBps);
+        assertEq(storedParams.duration, defaultDuration);
+        assertEq(storedParams.pool, pool); // Pool is set per policy
     }
 
     function testBurnPolicy() public {
@@ -135,7 +136,7 @@ contract PolicyManagerFoundryTest is Test {
         bytes32 entryCommit = keccak256("test_entry_data");
 
         vm.prank(admin);
-        uint256 policyId = policyManager.mintPolicy(lp, pool, params, entryCommit);
+        uint256 policyId = policyManager.mintPolicy(lp, pool, 1 ether, 0.01 ether, entryCommit);
 
         // Verify it's active
         assertTrue(policyManager.isPolicyActive(policyId));
@@ -155,31 +156,9 @@ contract PolicyManagerFoundryTest is Test {
 
         bytes32 entryCommit = keccak256("test_entry_data");
 
-        uint256 policy1 = policyManager.mintPolicy(
-            lp,
-            pool,
-            PolicyManager.PolicyParams({
-                deductibleBps: 1000,
-                capBps: 5000,
-                premiumBps: 100,
-                duration: 100000,
-                pool: pool
-            }),
-            entryCommit
-        );
+        uint256 policy1 = policyManager.mintPolicy(lp, pool, 1 ether, 0.01 ether, entryCommit);
 
-        uint256 policy2 = policyManager.mintPolicy(
-            lp,
-            address(0x4),
-            PolicyManager.PolicyParams({
-                deductibleBps: 500,
-                capBps: 7000,
-                premiumBps: 150,
-                duration: 200000,
-                pool: address(0x4)
-            }),
-            entryCommit
-        );
+        uint256 policy2 = policyManager.mintPolicy(lp, address(0x4), 2 ether, 0.02 ether, entryCommit);
 
         vm.stopPrank();
 
@@ -195,18 +174,7 @@ contract PolicyManagerFoundryTest is Test {
         bytes32 entryCommit = keccak256("test_entry_data");
 
         vm.prank(admin);
-        uint256 policyId = policyManager.mintPolicy(
-            lp,
-            pool,
-            PolicyManager.PolicyParams({
-                deductibleBps: 1000,
-                capBps: 5000,
-                premiumBps: 100,
-                duration: 100000,
-                pool: pool
-            }),
-            entryCommit
-        );
+        uint256 policyId = policyManager.mintPolicy(lp, pool, 1 ether, 0.01 ether, entryCommit);
 
         string memory uri = policyManager.uri(policyId);
 

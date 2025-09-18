@@ -44,6 +44,7 @@ import WalletConnection from "@/components/WalletConnection";
 // Import hooks
 import { usePolicyTransactions } from "@/lib/transactions";
 import { useAppStore, PolicyState } from "@/lib/store";
+import { usePolicyManager } from "@/lib/contracts";
 
 interface PolicyDetails {
   id: string;
@@ -86,54 +87,84 @@ export default function PolicyDetailView({ policyId }: PolicyDetailViewProps) {
   const { address, isConnected } = useAccount();
   const { submitClaim, claimState } = usePolicyTransactions();
   const { userPolicies } = useAppStore();
+  const { getPolicyDetails } = usePolicyManager();
 
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [showClaimFlow, setShowClaimFlow] = useState(false);
   const [showTransactionMonitor, setShowTransactionMonitor] = useState(false);
   const [policyDetails, setPolicyDetails] = useState<PolicyDetails | null>(null);
 
-  // Mock policy details - in real implementation, fetch from contracts
-  useEffect(() => {
-    // Simulate loading policy details
-    const loadPolicyDetails = async () => {
-      // In real implementation, fetch from blockchain
-      const mockPolicy: PolicyDetails = {
-        id: policyId,
-        poolAddress: "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640" as Address,
-        poolName: "USDC/ETH 0.05%",
-        status: "active",
-        premium: "0.0045",
-        coverage: "50000",
-        deductible: 10,
-        startTime: Date.now() - 7 * 24 * 60 * 60 * 1000, // 7 days ago
-        endTime: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days from now
-        claimHistory: [
-          {
-            id: "claim-1",
-            amount: "1250.50",
-            timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000,
-            status: "approved",
-          },
-        ],
-        riskMetrics: {
-          currentIL: 2.5,
-          maxIL: 8.2,
-          volatility: 0.45,
-          riskScore: "medium",
-        },
-        priceHistory: Array.from({ length: 30 }, (_, i) => ({
-          timestamp: Date.now() - (29 - i) * 24 * 60 * 60 * 1000,
-          token0Price: 1 + Math.random() * 0.1 - 0.05,
-          token1Price: 3200 + Math.random() * 400 - 200,
-          ilValue: Math.random() * 5,
-        })),
-      };
+  // Get policy details from contract
+  const contractPolicyData = getPolicyDetails(BigInt(policyId));
 
-      setPolicyDetails(mockPolicy);
+  // Load policy details from contract or mock data
+  useEffect(() => {
+    const loadPolicyDetails = async () => {
+      if (contractPolicyData?.data) {
+        // Use real contract data when available
+        const [lp, pool, params, entryCommit, createdAt, epoch, active] = contractPolicyData.data;
+
+        const realPolicy: PolicyDetails = {
+          id: policyId,
+          poolAddress: pool as Address,
+          poolName: "USDC/ETH 0.05%", // Would be fetched from pool contract
+          status: active ? "active" : "expired",
+          premium: "0.0045", // Would be calculated from params
+          coverage: "50000", // Would be calculated from position size
+          deductible: Number(params.deductibleBps) / 100,
+          startTime: Number(createdAt) * 1000,
+          endTime: Number(createdAt + params.duration) * 1000,
+          claimHistory: [], // Would be fetched from events
+          riskMetrics: {
+            currentIL: 2.5, // Would be calculated from current vs entry price
+            maxIL: 5.0,
+            volatility: 0.45,
+            riskScore: "medium",
+          },
+          priceHistory: [], // Would be fetched from price oracle
+        };
+
+        setPolicyDetails(realPolicy);
+      } else {
+        // Fallback to mock data when contract data is not available
+        const mockPolicy: PolicyDetails = {
+          id: policyId,
+          poolAddress: "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640" as Address,
+          poolName: "USDC/ETH 0.05%",
+          status: "active",
+          premium: "0.0045",
+          coverage: "50000",
+          deductible: 10,
+          startTime: Date.now() - 7 * 24 * 60 * 60 * 1000,
+          endTime: Date.now() + 7 * 24 * 60 * 60 * 1000,
+          claimHistory: [
+            {
+              id: "claim-1",
+              amount: "1250.50",
+              timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000,
+              status: "approved",
+            },
+          ],
+          riskMetrics: {
+            currentIL: 2.5,
+            maxIL: 8.2,
+            volatility: 0.45,
+            riskScore: "medium",
+          },
+          priceHistory: Array.from({ length: 30 }, (_, i) => ({
+            timestamp: Date.now() - (29 - i) * 24 * 60 * 60 * 1000,
+            token0Price: 1 + Math.random() * 0.1 - 0.05,
+            token1Price: 3200 + Math.random() * 400 - 200,
+            ilValue: Math.random() * 5,
+          })),
+        };
+
+        setPolicyDetails(mockPolicy);
+      }
     };
 
     loadPolicyDetails();
-  }, [policyId]);
+  }, [policyId, contractPolicyData]);
 
   const handleSubmitClaim = async (claimAmount: string) => {
     if (!address || !policyDetails) {
@@ -410,12 +441,12 @@ export default function PolicyDetailView({ policyId }: PolicyDetailViewProps) {
                 policy={
                   {
                     id: policyDetails.id,
-                    lp: "0x" as any,
+                    lp: contractPolicyData?.data?.[0] || ("0x" as any),
                     pool: policyDetails.poolAddress as any,
-                    capBps: 0,
+                    capBps: contractPolicyData?.data?.[2]?.capBps || 0,
                     deductibleBps: policyDetails.deductible * 100,
-                    duration: 0,
-                    entryCommit: "0x" as any,
+                    duration: contractPolicyData?.data?.[2]?.duration || 0,
+                    entryCommit: contractPolicyData?.data?.[3] || ("0x" as any),
                     blockNumber: BigInt(0),
                     blockTimestamp: BigInt(policyDetails.startTime),
                     transactionHash: "0x" as any,

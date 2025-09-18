@@ -1,0 +1,479 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "ConfidentialInsuranceSpec",
+    "version": "1.0.0",
+    "description": "JSON-RPC interface generated from the Solidity ABI."
+  },
+  "methods": [
+    {
+      "name": "rpc.discover",
+      "summary": "Returns the OpenRPC schema of this API.",
+      "params": [],
+      "result": {
+        "name": "OpenRPC Schema",
+        "schema": {
+          "$ref": "#/result"
+        }
+      }
+    },
+    {
+      "name": "abi.discover",
+      "summary": "Returns the ABI of the smart contract.",
+      "params": [],
+      "result": {
+        "name": "ABI",
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "name": "compute_aggregateAttestations",
+      "summary": "Function aggregateAttestations from IConfidentialInsuranceSpec",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "attestations",
+          "required": true,
+          "schema": {
+            "title": "uint256[]",
+            "description": "uint256[] integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256[]",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "signatures",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "bytes[]",
+            "pattern": "^0x[0-9a-fA-F]*$",
+            "description": "Hex-encoded bytes[]"
+          }
+        },
+        {
+          "name": "operatorPublicKeys",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "bytes[]",
+            "pattern": "^0x[0-9a-fA-F]*$",
+            "description": "Hex-encoded bytes[]"
+          }
+        },
+        {
+          "name": "threshold",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "format": "tuple(uint256,bool)",
+          "items": [
+            {
+              "title": "Uint256",
+              "description": "uint256 integer, serialized as a hex string.",
+              "type": "string",
+              "format": "uint256",
+              "pattern": "^0x[0-9a-fA-F]+$",
+              "examples": [
+                "0x2386F26FC10000"
+              ]
+            },
+            {
+              "type": "boolean",
+              "format": "bool",
+              "description": "Boolean value"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    {
+      "name": "compute_calculateImpermanentLoss",
+      "summary": "Function calculateImpermanentLoss from IConfidentialInsuranceSpec",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "initialTokenAAmount",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "initialTokenBAmount",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "currentTokenAPrice",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "currentTokenBPrice",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "initialTokenAPrice",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "initialTokenBPrice",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "poolFeeRate",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "format": "tuple(uint256,bool)",
+          "items": [
+            {
+              "title": "Uint256",
+              "description": "uint256 integer, serialized as a hex string.",
+              "type": "string",
+              "format": "uint256",
+              "pattern": "^0x[0-9a-fA-F]+$",
+              "examples": [
+                "0x2386F26FC10000"
+              ]
+            },
+            {
+              "type": "boolean",
+              "format": "bool",
+              "description": "Boolean value"
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    {
+      "name": "compute_calculatePayout",
+      "summary": "Function calculatePayout from IConfidentialInsuranceSpec",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "policyId",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "impermanentLoss",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "coverageAmount",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "deductible",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "coverageRatio",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "payoutAmount",
+        "schema": {
+          "title": "Uint256",
+          "description": "uint256 integer, serialized as a hex string.",
+          "type": "string",
+          "format": "uint256",
+          "pattern": "^0x[0-9a-fA-F]+$",
+          "examples": [
+            "0x2386F26FC10000"
+          ]
+        }
+      }
+    },
+    {
+      "name": "compute_validateOraclePrices",
+      "summary": "Function validateOraclePrices from IConfidentialInsuranceSpec",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "priceData",
+          "required": true,
+          "schema": {
+            "title": "uint256[]",
+            "description": "uint256[] integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256[]",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "timestamps",
+          "required": true,
+          "schema": {
+            "title": "uint256[]",
+            "description": "uint256[] integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256[]",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        },
+        {
+          "name": "deviationThreshold",
+          "required": true,
+          "schema": {
+            "title": "Uint256",
+            "description": "uint256 integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "format": "tuple(bool,uint256[])",
+          "items": [
+            {
+              "type": "boolean",
+              "format": "bool",
+              "description": "Boolean value"
+            },
+            {
+              "title": "uint256[]",
+              "description": "uint256[] integer, serialized as a hex string.",
+              "type": "string",
+              "format": "uint256[]",
+              "pattern": "^0x[0-9a-fA-F]+$",
+              "examples": [
+                "0x2386F26FC10000"
+              ]
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    {
+      "name": "compute_verifyEncryptedAttestation",
+      "summary": "Function verifyEncryptedAttestation from IConfidentialInsuranceSpec",
+      "paramStructure": "by-position",
+      "params": [
+        {
+          "name": "encryptedAttestation",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "bytes",
+            "pattern": "^0x[0-9a-fA-F]*$",
+            "description": "Hex-encoded bytes"
+          }
+        },
+        {
+          "name": "proof",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "bytes",
+            "pattern": "^0x[0-9a-fA-F]*$",
+            "description": "Hex-encoded bytes"
+          }
+        },
+        {
+          "name": "publicInputs",
+          "required": true,
+          "schema": {
+            "title": "uint256[]",
+            "description": "uint256[] integer, serialized as a hex string.",
+            "type": "string",
+            "format": "uint256[]",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "examples": [
+              "0x2386F26FC10000"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "array",
+          "format": "tuple(bool,uint256)",
+          "items": [
+            {
+              "type": "boolean",
+              "format": "bool",
+              "description": "Boolean value"
+            },
+            {
+              "title": "Uint256",
+              "description": "uint256 integer, serialized as a hex string.",
+              "type": "string",
+              "format": "uint256",
+              "pattern": "^0x[0-9a-fA-F]+$",
+              "examples": [
+                "0x2386F26FC10000"
+              ]
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    }
+  ]
+}
