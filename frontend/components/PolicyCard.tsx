@@ -20,8 +20,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { format, formatDistanceToNow } from "date-fns";
 import { usePolicyEvents } from "@/lib/events";
-import { usePolicyManager, useInsuranceVault } from "@/lib/contracts";
+import { usePolicyManager, useInsuranceVault, CONTRACT_ADDRESSES, INSURANCE_VAULT_ABI } from "@/lib/contracts";
 import { PolicyState } from "@/lib/store";
+import { useReadContract } from "wagmi";
 
 interface PolicyCardProps {
   policy: PolicyState;
@@ -48,10 +49,22 @@ export default function PolicyCard({
   // Real-time event monitoring
   const policyEvents = usePolicyEvents(BigInt(policy.id));
   const { checkSolvency } = useInsuranceVault();
+
+  // Get solvency data at component level instead of in callback
+  const { data: vaultReserves } = useReadContract({
+    address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+    abi: INSURANCE_VAULT_ABI,
+    functionName: "reserves",
+    args: ["0x0000000000000000000000000000000000000000"], // Default pool for now
+    query: {
+      enabled: !!policy.estimatedPayout,
+    },
+  });
   const { getPolicyDetails } = usePolicyManager();
 
   // Format utilities
   const formatAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const formatPolicyId = (id: string) => `${id.slice(0, 8)}...${id.slice(-6)}`;
 
   const formatAmount = (amount: bigint, decimals = 18) => {
     const value = Number(amount) / Math.pow(10, decimals);
@@ -140,8 +153,9 @@ export default function PolicyCard({
     if (!policy.estimatedPayout) return;
 
     try {
-      // Check vault solvency before proceeding
-      const { data: isSolvent } = await checkSolvency(policy.estimatedPayout);
+      // Check vault solvency using the reserves data we fetched at component level
+      const isSolvent =
+        vaultReserves && policy.estimatedPayout ? (vaultReserves as bigint) >= policy.estimatedPayout : false;
 
       if (!isSolvent) {
         alert("Vault is currently insolvent for this payout amount");
@@ -152,7 +166,7 @@ export default function PolicyCard({
     } catch (error) {
       console.error("Claim validation failed:", error);
     }
-  }, [policy.id, policy.estimatedPayout, onClaimRequest, checkSolvency]);
+  }, [policy.id, policy.estimatedPayout, onClaimRequest, vaultReserves]);
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -169,11 +183,11 @@ export default function PolicyCard({
         >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-green-400">#{policy.id}</div>
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-green-400 truncate">#{formatPolicyId(policy.id)}</div>
                 <div className="text-sm text-gray-400">{formatAddress(policy.pool)}</div>
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0">
                 <div className="text-sm font-mono text-green-400">{formatAmount(policy.premiumsPaid)} ETH</div>
                 {getStatusBadge()}
               </div>
@@ -187,40 +201,52 @@ export default function PolicyCard({
   return (
     <TooltipProvider>
       <motion.div variants={cardVariants} initial="hidden" animate="visible" whileHover="hover">
-        <Card className="w-full max-w-md bg-black/60 border-green-500/30 backdrop-blur-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-green-400 flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Policy #{policy.id}
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleRefresh}
-                      disabled={isRefreshing}
-                      className="h-6 w-6 p-0"
-                    >
-                      <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Refresh policy data</TooltipContent>
-                </Tooltip>
-              </CardTitle>
-              <div className="flex items-center gap-2">
+        <Card className="w-full max-w-md bg-black/60 border-green-500/30 backdrop-blur-sm overflow-hidden">
+          <CardHeader className="pb-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-green-400 flex items-center gap-2 text-base">
+                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="truncate cursor-help">Policy #{formatPolicyId(policy.id)}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="max-w-xs">
+                        <div className="font-semibold">Full Policy ID:</div>
+                        <div className="break-all text-xs">{policy.id}</div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        className="h-6 w-6 p-0 flex-shrink-0"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Refresh policy data</TooltipContent>
+                  </Tooltip>
+                </CardTitle>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {getRiskIndicator()}
                 {getStatusBadge()}
               </div>
             </div>
 
-            <CardDescription className="text-gray-300 flex items-center justify-between">
-              <span>IL Insurance for Pool {formatAddress(policy.pool)}</span>
+            <CardDescription className="text-gray-300 flex items-center justify-between gap-2">
+              <span className="truncate">IL Insurance for Pool {formatAddress(policy.pool)}</span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => window.open(`https://etherscan.io/address/${policy.pool}`, "_blank")}
-                className="h-6 w-6 p-0"
+                className="h-6 w-6 p-0 flex-shrink-0"
               >
                 <ExternalLink className="h-3 w-3" />
               </Button>

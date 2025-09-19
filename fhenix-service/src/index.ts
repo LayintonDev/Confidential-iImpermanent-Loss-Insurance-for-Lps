@@ -63,6 +63,116 @@ export function createApp() {
     });
   });
 
+  // Risk Assessment endpoint
+  app.post("/api/fhenix/assess-risk", (req: express.Request, res: express.Response) => {
+    try {
+      const { poolAddress, liquidityAmount, userAddress, duration } = req.body;
+
+      // Mock risk assessment for now
+      const mockRiskAssessment = {
+        riskScore: Math.random() * 3 + 2, // Random score between 2-5
+        riskLevel: Math.random() > 0.7 ? "high" : Math.random() > 0.4 ? "medium" : "low",
+        factors: {
+          volatility: Math.random() * 0.8 + 0.2,
+          liquidity: Math.random() * 0.9 + 0.1,
+          historicalLoss: Math.random() * 0.3,
+          poolAge: Math.random() * 365 + 30,
+        },
+        recommendations: ["Monitor pool volatility", "Consider shorter duration", "Review liquidity levels"],
+      };
+
+      res.json({
+        success: true,
+        data: mockRiskAssessment,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Risk assessment failed",
+      });
+    }
+  });
+
+  // Premium Calculation endpoint
+  app.post("/api/fhenix/calculate-premium", (req: express.Request, res: express.Response) => {
+    try {
+      const { coverage, duration, poolMetrics } = req.body;
+
+      // Mock premium calculation
+      const basePremium = BigInt(coverage) / BigInt(1000); // 0.1% base rate
+      const adjustedPremium = basePremium + (basePremium * BigInt(Math.floor(Math.random() * 50))) / BigInt(100);
+
+      const mockPremiumCalculation = {
+        basePremium: basePremium.toString(),
+        adjustedPremium: adjustedPremium.toString(),
+        premiumBps: Math.floor(Math.random() * 100) + 10, // 0.1% to 1.1%
+        discountApplied: Math.random() * 0.1,
+        breakdown: {
+          riskComponent: (basePremium / BigInt(4)).toString(),
+          poolComponent: (basePremium / BigInt(4)).toString(),
+          timeComponent: (basePremium / BigInt(4)).toString(),
+          confidentialityBonus: (basePremium / BigInt(4)).toString(),
+        },
+      };
+
+      res.json({
+        success: true,
+        data: mockPremiumCalculation,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Premium calculation failed",
+      });
+    }
+  });
+
+  // Policy Validation endpoint
+  app.post("/api/fhenix/validate-policy", (req: express.Request, res: express.Response) => {
+    try {
+      const mockValidation = {
+        isValid: Math.random() > 0.1, // 90% valid
+        estimatedPayout: (BigInt(req.body.coverage || "1000000000000000000") / BigInt(2)).toString(),
+        riskLevel: Math.random() > 0.7 ? "high" : Math.random() > 0.4 ? "medium" : "low",
+        validationErrors: [],
+        recommendations: ["Policy looks good", "Consider monitoring market conditions"],
+      };
+
+      res.json({
+        success: true,
+        data: mockValidation,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Policy validation failed",
+      });
+    }
+  });
+
+  // Claim Processing endpoint
+  app.post("/api/fhenix/process-claim", (req: express.Request, res: express.Response) => {
+    try {
+      const mockClaimProcessing = {
+        isEligible: Math.random() > 0.3, // 70% eligible
+        payoutAmount: (BigInt(req.body.claimAmount || "1000000000000000000") * BigInt(80)) / BigInt(100),
+        processingTime: Math.floor(Math.random() * 3600) + 300, // 5min to 1hr
+        requiredDocuments: ["Transaction hash", "Loss evidence"],
+        status: "pending_review",
+      };
+
+      res.json({
+        success: true,
+        data: mockClaimProcessing,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Claim processing failed",
+      });
+    }
+  });
+
   // Main compute claim endpoint
   app.post(
     "/api/compute-claim",

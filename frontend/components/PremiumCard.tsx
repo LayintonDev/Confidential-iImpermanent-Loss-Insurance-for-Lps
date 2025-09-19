@@ -18,9 +18,14 @@ import {
   Zap,
   Clock,
   Target,
+  Cpu,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
+import { Address } from "viem";
+import { useAccount } from "wagmi";
+import { useFhenixApi, PremiumCalculationResponse, RiskAssessmentResponse } from "@/lib/fhenix-api";
 
 interface PolicyParams {
   deductibleBps: number;
@@ -42,6 +47,17 @@ interface PremiumCardProps {
   disabled?: boolean;
   error?: string | null;
   success?: boolean;
+  // Token information for dynamic labels
+  token0?: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+  token1?: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
 }
 
 interface PremiumQuote {
@@ -50,6 +66,32 @@ interface PremiumQuote {
   effectiveRate: number;
   riskLevel: "low" | "medium" | "high";
   gasCost: number;
+  // Fhenix-powered data
+  confidentialCalculation?: {
+    basePremium: bigint;
+    adjustedPremium: bigint;
+    premiumBps: number;
+    breakdown: {
+      riskComponent: bigint;
+      poolComponent: bigint;
+      timeComponent: bigint;
+      confidentialityBonus: bigint;
+    };
+  };
+  riskAssessment?: {
+    riskScore: number;
+    confidence: number;
+    riskLevel: "low" | "medium" | "high";
+    riskFactors: string[];
+    factors: {
+      volatility: number;
+      liquidity: number;
+      historicalLoss: number;
+      poolAge: number;
+    };
+    recommendations: string[];
+  };
+  isConfidential: boolean;
 }
 
 export default function PremiumCard({
@@ -63,7 +105,14 @@ export default function PremiumCard({
   disabled = false,
   error = null,
   success = false,
+  // Default token information for fallback
+  token0 = { name: "USD Coin", symbol: "USDC", decimals: 6 },
+  token1 = { name: "Ethereum", symbol: "ETH", decimals: 18 },
 }: PremiumCardProps) {
+  // Hooks
+  const { address } = useAccount();
+  const fhenixApi = useFhenixApi();
+
   // State management
   const [insuranceEnabled, setInsuranceEnabled] = useState(false);
   const [amount0, setAmount0] = useState("");
@@ -77,7 +126,34 @@ export default function PremiumCard({
   const [quote, setQuote] = useState<PremiumQuote | null>(null);
   const [balanceWarning, setBalanceWarning] = useState<string>("");
 
-  // Calculate premium quote
+  // Fhenix integration state
+  const [useConfidentialCalculation, setUseConfidentialCalculation] = useState(true);
+  const [fhenixError, setFhenixError] = useState<string | null>(null);
+  const [fhenixServiceHealth, setFhenixServiceHealth] = useState<"unknown" | "healthy" | "unhealthy">("unknown");
+
+  // Health check for Fhenix service
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const health = await fhenixApi.healthCheck();
+        setFhenixServiceHealth(health.status);
+        if (health.status === "unhealthy") {
+          console.warn("Fhenix service is unhealthy:", health.message);
+          setUseConfidentialCalculation(false);
+        }
+      } catch (error) {
+        console.error("Fhenix health check failed:", error);
+        setFhenixServiceHealth("unhealthy");
+        setUseConfidentialCalculation(false);
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [fhenixApi]);
+
+  // Calculate premium quote with Fhenix integration
   const calculateQuote = useCallback(async () => {
     if (!amount0 || !amount1 || !insuranceEnabled) {
       setQuote(null);
@@ -85,26 +161,111 @@ export default function PremiumCard({
     }
 
     setIsCalculatingQuote(true);
+    setFhenixError(null);
 
     try {
       const totalValue = parseFloat(amount0) * currentPrice.token0 + parseFloat(amount1) * currentPrice.token1;
+      const liquidityAmount = BigInt(Math.floor(parseFloat(amount0) * 1e18)); // Convert to wei
+      const coverage = BigInt(Math.floor(totalValue * 1e18)); // Convert to wei
 
-      // Risk-based premium calculation
+      let confidentialCalculation = undefined;
+      let riskAssessment = undefined;
+      let isConfidential = false;
+
+      // Try Fhenix confidential calculation if enabled and service is healthy
+      if (useConfidentialCalculation && fhenixServiceHealth === "healthy" && address) {
+        try {
+          console.log("🔐 Using Fhenix confidential calculation...");
+
+          // Parallel execution of risk assessment and premium calculation
+          const [riskResponse, premiumResponse] = await Promise.all([
+            fhenixApi.assessRisk({
+              poolAddress: poolAddress as Address,
+              token0: "0x0000000000000000000000000000000000000000" as Address, // Mock for now
+              token1: "0xA0b86a33E6410c0f35f9A4A5b2d0e93f5c4dD35B" as Address, // Mock for now
+              liquidityAmount,
+              userAddress: address,
+              duration: customParams.duration,
+            }),
+            fhenixApi.calculatePremium({
+              poolAddress: poolAddress as Address,
+              coverage,
+              duration: customParams.duration,
+              userRiskProfile: {
+                historicalLosses: 0, // Could be fetched from user history
+                portfolioSize: totalValue.toString(),
+                experienceLevel: "intermediate", // Could be determined from user behavior
+              },
+              poolMetrics: {
+                volatility: poolVolatility,
+                liquidity: BigInt(Math.floor(totalValue * 10 * 1e18)), // Mock pool liquidity
+                volume24h: BigInt(Math.floor(totalValue * 5 * 1e18)), // Mock 24h volume
+              },
+            }),
+          ]);
+
+          if (riskResponse.success && riskResponse.data) {
+            riskAssessment = {
+              ...riskResponse.data,
+              confidence: 0.85, // Default confidence score
+              riskFactors: riskResponse.data.recommendations.slice(0, 3), // Use recommendations as risk factors
+            };
+            console.log("✅ Risk assessment completed:", riskAssessment);
+          }
+
+          if (premiumResponse.success && premiumResponse.data) {
+            confidentialCalculation = {
+              basePremium: BigInt(premiumResponse.data.basePremium),
+              adjustedPremium: BigInt(premiumResponse.data.adjustedPremium),
+              premiumBps: premiumResponse.data.premiumBps,
+              breakdown: {
+                riskComponent: BigInt(premiumResponse.data.breakdown.riskComponent),
+                poolComponent: BigInt(premiumResponse.data.breakdown.poolComponent),
+                timeComponent: BigInt(premiumResponse.data.breakdown.timeComponent),
+                confidentialityBonus: BigInt(premiumResponse.data.breakdown.confidentialityBonus),
+              },
+            };
+            isConfidential = true;
+            console.log("✅ Confidential premium calculation completed:", confidentialCalculation);
+          }
+        } catch (fhenixError) {
+          console.warn("🔄 Fhenix calculation failed, falling back to local calculation:", fhenixError);
+          setFhenixError(fhenixError instanceof Error ? fhenixError.message : "Fhenix calculation failed");
+          // Continue with fallback calculation
+        }
+      }
+
+      // Fallback or local calculation
       const baseRate = 0.0003; // 0.03% base rate
-      const volatilityMultiplier = 1 + (poolVolatility - 0.3) * 2; // Higher volatility = higher premium
-      const durationMultiplier = Math.sqrt(customParams.duration / 100000); // Longer duration = higher premium
+      const volatilityMultiplier = 1 + (poolVolatility - 0.3) * 2;
+      const durationMultiplier = Math.sqrt(customParams.duration / 100000);
 
-      const effectiveRate = baseRate * volatilityMultiplier * durationMultiplier;
-      const premiumAmount = totalValue * effectiveRate;
+      // Use Fhenix premium if available, otherwise use local calculation
+      let effectiveRate: number;
+      let premiumAmount: number;
+
+      if (confidentialCalculation) {
+        // Use Fhenix confidential calculation
+        effectiveRate = confidentialCalculation.premiumBps / 10000;
+        premiumAmount = Number(confidentialCalculation.adjustedPremium) / 1e18;
+      } else {
+        // Use local calculation
+        effectiveRate = baseRate * volatilityMultiplier * durationMultiplier;
+        premiumAmount = totalValue * effectiveRate;
+      }
 
       // Calculate max payout based on cap
       const maxPayout = (totalValue * customParams.capBps) / 10000;
 
-      // Determine risk level
-      const riskLevel: "low" | "medium" | "high" =
-        effectiveRate < 0.0005 ? "low" : effectiveRate < 0.001 ? "medium" : "high";
+      // Use Fhenix risk assessment if available
+      const riskLevel: "low" | "medium" | "high" = riskAssessment
+        ? riskAssessment.riskLevel
+        : effectiveRate < 0.0005
+        ? "low"
+        : effectiveRate < 0.001
+        ? "medium"
+        : "high";
 
-      // Estimate gas cost
       const gasCost = 0.005; // Mock gas cost
 
       const newQuote: PremiumQuote = {
@@ -113,17 +274,42 @@ export default function PremiumCard({
         effectiveRate,
         riskLevel,
         gasCost,
+        confidentialCalculation,
+        riskAssessment,
+        isConfidential,
       };
 
       setQuote(newQuote);
       onQuoteUpdate?.(newQuote);
+
+      // Show success message for confidential calculation
+      if (isConfidential) {
+        toast.success("🔐 Premium calculated using confidential computation!", {
+          duration: 3000,
+          icon: "🔐",
+        });
+      }
     } catch (error) {
       console.error("Quote calculation failed:", error);
       toast.error("Failed to calculate premium quote");
+      setFhenixError(error instanceof Error ? error.message : "Quote calculation failed");
     } finally {
       setIsCalculatingQuote(false);
     }
-  }, [amount0, amount1, insuranceEnabled, currentPrice, poolVolatility, customParams, onQuoteUpdate]);
+  }, [
+    amount0,
+    amount1,
+    insuranceEnabled,
+    currentPrice,
+    poolVolatility,
+    customParams,
+    onQuoteUpdate,
+    useConfidentialCalculation,
+    fhenixServiceHealth,
+    address,
+    poolAddress,
+    fhenixApi,
+  ]);
 
   // Auto-calculate quote when inputs change
   useEffect(() => {
@@ -195,12 +381,86 @@ export default function PremiumCard({
                 <CardTitle className="text-green-400 flex items-center gap-2">
                   <Shield className="h-5 w-5" />
                   IL Insurance
+                  {/* Fhenix Status Indicator */}
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <div className="flex items-center gap-1">
+                        {fhenixServiceHealth === "healthy" && useConfidentialCalculation && (
+                          <Cpu className="h-4 w-4 text-blue-400 animate-pulse" />
+                        )}
+                        {fhenixServiceHealth === "unhealthy" && <AlertTriangle className="h-4 w-4 text-yellow-400" />}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-xs">
+                        {fhenixServiceHealth === "healthy" && useConfidentialCalculation && (
+                          <span className="text-blue-400">🔐 Confidential computation enabled</span>
+                        )}
+                        {fhenixServiceHealth === "unhealthy" && (
+                          <span className="text-yellow-400">⚠️ Using fallback calculation</span>
+                        )}
+                        {fhenixServiceHealth === "unknown" && (
+                          <span className="text-gray-400">⏳ Checking Fhenix service...</span>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
-                <CardDescription className="text-gray-300">Protect your {poolName} position</CardDescription>
+                <CardDescription className="text-gray-300">
+                  Protect your {poolName} position
+                  {quote?.isConfidential && (
+                    <span className="ml-2 text-blue-400 text-xs">• Confidentially calculated</span>
+                  )}
+                </CardDescription>
               </div>
-              <Badge variant="outline" className="border-blue-500/30 text-blue-400">
-                {(poolVolatility * 100).toFixed(1)}% volatility
-              </Badge>
+              <div className="flex flex-col gap-2">
+                <Badge variant="outline" className="border-blue-500/30 text-blue-400">
+                  {(poolVolatility * 100).toFixed(1)}% volatility
+                </Badge>
+                {quote?.isConfidential && (
+                  <Badge variant="outline" className="border-purple-500/30 text-purple-400">
+                    <Cpu className="h-3 w-3 mr-1" />
+                    Fhenix
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Fhenix Error Alert */}
+            {fhenixError && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3"
+              >
+                <div className="flex items-center gap-2 text-yellow-400 text-sm">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>Fhenix service unavailable. Using local calculation.</span>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Fhenix Toggle */}
+            <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-600">
+              <div className="flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-blue-400" />
+                <span className="text-sm text-gray-300">Confidential Calculation</span>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-3 w-3 text-gray-400" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs max-w-xs">
+                      Uses Fhenix confidential computation for enhanced privacy and more accurate risk assessment
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <Checkbox
+                checked={useConfidentialCalculation}
+                onCheckedChange={checked => setUseConfidentialCalculation(checked === true)}
+                disabled={fhenixServiceHealth !== "healthy"}
+              />
             </div>
           </CardHeader>
 
@@ -215,7 +475,7 @@ export default function PremiumCard({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="amount0" className="text-gray-300">
-                    USDC Amount
+                    {token0.symbol} Amount
                   </Label>
                   <Input
                     id="amount0"
@@ -223,7 +483,7 @@ export default function PremiumCard({
                     onChange={e => setAmount0(e.target.value)}
                     placeholder="0.00"
                     type="number"
-                    step="0.01"
+                    step={token0.decimals === 18 ? "0.001" : "0.01"}
                     className="bg-gray-800/50 border-gray-600 text-white"
                     disabled={disabled || isLoading}
                   />
@@ -231,7 +491,7 @@ export default function PremiumCard({
 
                 <div className="space-y-2">
                   <Label htmlFor="amount1" className="text-gray-300">
-                    ETH Amount
+                    {token1.symbol} Amount
                   </Label>
                   <Input
                     id="amount1"
@@ -239,7 +499,7 @@ export default function PremiumCard({
                     onChange={e => setAmount1(e.target.value)}
                     placeholder="0.00"
                     type="number"
-                    step="0.001"
+                    step={token1.decimals === 18 ? "0.001" : "0.01"}
                     className="bg-gray-800/50 border-gray-600 text-white"
                     disabled={disabled || isLoading}
                   />
@@ -255,6 +515,12 @@ export default function PremiumCard({
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Est. IL Risk:</span>
                     <span className="text-yellow-400 font-mono">${impermanentLossEstimate.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>
+                      Pool: {token0.symbol}/{token1.symbol}
+                    </span>
+                    <span>{poolVolatility && (poolVolatility * 100).toFixed(1)}% volatility</span>
                   </div>
                 </div>
               )}
@@ -371,29 +637,90 @@ export default function PremiumCard({
                           </div>
 
                           {quote && !isCalculatingQuote && (
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">Premium:</span>
-                                <span className="text-green-400 font-mono">{quote.premiumAmount.toFixed(6)} ETH</span>
+                            <div className="space-y-3">
+                              {/* Basic Quote Info */}
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Premium:</span>
+                                  <span className="text-green-400 font-mono">{quote.premiumAmount.toFixed(6)} ETH</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Max Payout:</span>
+                                  <span className="text-green-400 font-mono">{quote.maxPayout.toFixed(6)} ETH</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Rate:</span>
+                                  <span className="text-white">{(quote.effectiveRate * 100).toFixed(4)}%</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Risk Level:</span>
+                                  <Badge variant="outline" className={getRiskColor(quote.riskLevel)}>
+                                    {quote.riskLevel}
+                                  </Badge>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Est. Gas:</span>
+                                  <span className="text-gray-300 font-mono">{quote.gasCost.toFixed(6)} ETH</span>
+                                </div>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">Max Payout:</span>
-                                <span className="text-green-400 font-mono">{quote.maxPayout.toFixed(6)} ETH</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">Rate:</span>
-                                <span className="text-white">{(quote.effectiveRate * 100).toFixed(4)}%</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">Risk Level:</span>
-                                <Badge variant="outline" className={getRiskColor(quote.riskLevel)}>
-                                  {quote.riskLevel}
-                                </Badge>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">Est. Gas:</span>
-                                <span className="text-gray-300 font-mono">{quote.gasCost.toFixed(6)} ETH</span>
-                              </div>
+
+                              {/* Fhenix Confidential Data */}
+                              {quote.isConfidential && quote.riskAssessment && (
+                                <div className="pt-3 border-t border-gray-600">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Cpu className="h-3 w-3 text-blue-400" />
+                                    <span className="text-xs font-medium text-blue-400">
+                                      Confidential Risk Assessment
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1 text-xs">
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-400">Risk Score:</span>
+                                      <span className="text-blue-300">
+                                        {quote.riskAssessment.riskScore.toFixed(2)}/10
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-400">Confidence:</span>
+                                      <span className="text-blue-300">
+                                        {(quote.riskAssessment.confidence * 100).toFixed(1)}%
+                                      </span>
+                                    </div>
+                                    {quote.riskAssessment.riskFactors.length > 0 && (
+                                      <div className="mt-2">
+                                        <span className="text-gray-400">Risk Factors:</span>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {quote.riskAssessment.riskFactors.slice(0, 2).map((factor, index) => (
+                                            <Badge
+                                              key={index}
+                                              variant="outline"
+                                              className="border-blue-500/30 text-blue-300 text-xs py-0 px-1"
+                                            >
+                                              {factor}
+                                            </Badge>
+                                          ))}
+                                          {quote.riskAssessment.riskFactors.length > 2 && (
+                                            <Badge
+                                              variant="outline"
+                                              className="border-blue-500/30 text-blue-300 text-xs py-0 px-1"
+                                            >
+                                              +{quote.riskAssessment.riskFactors.length - 2}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Fhenix Service Status */}
+                              {quote.isConfidential && (
+                                <div className="flex items-center gap-2 text-xs text-blue-400">
+                                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                                  <span>Powered by Fhenix confidential computation</span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </motion.div>

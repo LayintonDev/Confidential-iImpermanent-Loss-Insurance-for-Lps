@@ -2121,36 +2121,8 @@ export function useInsuranceVault() {
     return useReadContract({
       address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
       abi: INSURANCE_VAULT_ABI,
-      functionName: "getVaultStats",
+      functionName: "getPoolStats",
       args: [pool as `0x${string}`],
-    });
-  }, []);
-
-  const getPolicyClaimInfo = useCallback((policyId: bigint) => {
-    return useReadContract({
-      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
-      abi: INSURANCE_VAULT_ABI,
-      functionName: "getPolicyClaimInfo",
-      args: [policyId],
-    });
-  }, []);
-
-  const validateClaim = useCallback((policyId: bigint, amount: bigint) => {
-    return useReadContract({
-      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
-      abi: INSURANCE_VAULT_ABI,
-      functionName: "validateClaim",
-      args: [policyId, amount],
-    });
-  }, []);
-
-  const checkSolvency = useCallback((payout: bigint) => {
-    // For backwards compatibility - this checks if vault has enough reserves
-    return useReadContract({
-      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
-      abi: INSURANCE_VAULT_ABI,
-      functionName: "reserves",
-      args: ["0x0000000000000000000000000000000000000000"], // Default pool for now
     });
   }, []);
 
@@ -2169,6 +2141,16 @@ export function useInsuranceVault() {
       abi: INSURANCE_VAULT_ABI,
       functionName: "reserves",
       args: [pool as `0x${string}`],
+    });
+  }, []);
+
+  const checkSolvency = useCallback((payout: bigint) => {
+    // For backwards compatibility - this checks if vault has enough reserves
+    return useReadContract({
+      address: CONTRACT_ADDRESSES.INSURANCE_VAULT as `0x${string}`,
+      abi: INSURANCE_VAULT_ABI,
+      functionName: "reserves",
+      args: ["0x0000000000000000000000000000000000000000"], // Default pool for now
     });
   }, []);
 
@@ -2213,11 +2195,9 @@ export function useInsuranceVault() {
 
   return {
     getVaultStats,
-    getPolicyClaimInfo,
-    validateClaim,
-    checkSolvency,
     getTotalPremiums,
     getReserves,
+    checkSolvency,
     depositFunds,
     watchClaimPaid,
     watchPremiumDeposited,

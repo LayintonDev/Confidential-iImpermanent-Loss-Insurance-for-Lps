@@ -102,18 +102,22 @@ export default function PolicyDetailView({ policyId }: PolicyDetailViewProps) {
     const loadPolicyDetails = async () => {
       if (contractPolicyData?.data) {
         // Use real contract data when available
-        const [lp, pool, params, entryCommit, createdAt, epoch, active] = contractPolicyData.data;
+        // The contract returns: [lp, pool, params (as tuple), entryCommit, createdAt, epoch, active]
+        const [lp, pool, paramsRaw, entryCommit, createdAt, epoch, active] = contractPolicyData.data;
+
+        // Handle params as a raw tuple from contract
+        const params = paramsRaw as any; // Type assertion since contract data is tuple
 
         const realPolicy: PolicyDetails = {
           id: policyId,
-          poolAddress: pool as Address,
+          poolAddress: pool as unknown as `0x${string}`,
           poolName: "USDC/ETH 0.05%", // Would be fetched from pool contract
           status: active ? "active" : "expired",
           premium: "0.0045", // Would be calculated from params
           coverage: "50000", // Would be calculated from position size
-          deductible: Number(params.deductibleBps) / 100,
+          deductible: Number(params[0]) / 100, // params[0] is deductibleBps
           startTime: Number(createdAt) * 1000,
-          endTime: Number(createdAt + params.duration) * 1000,
+          endTime: Number(createdAt + params[3]) * 1000, // params[3] is duration
           claimHistory: [], // Would be fetched from events
           riskMetrics: {
             currentIL: 2.5, // Would be calculated from current vs entry price
@@ -443,9 +447,9 @@ export default function PolicyDetailView({ policyId }: PolicyDetailViewProps) {
                     id: policyDetails.id,
                     lp: contractPolicyData?.data?.[0] || ("0x" as any),
                     pool: policyDetails.poolAddress as any,
-                    capBps: contractPolicyData?.data?.[2]?.capBps || 0,
+                    capBps: (contractPolicyData?.data?.[2] as any)?.[1] || BigInt(0), // params[1] is capBps
                     deductibleBps: policyDetails.deductible * 100,
-                    duration: contractPolicyData?.data?.[2]?.duration || 0,
+                    duration: (contractPolicyData?.data?.[2] as any)?.[3] || BigInt(0), // params[3] is duration
                     entryCommit: contractPolicyData?.data?.[3] || ("0x" as any),
                     blockNumber: BigInt(0),
                     blockTimestamp: BigInt(policyDetails.startTime),

@@ -9,20 +9,8 @@ import {
 } from "wagmi";
 import { toast } from "react-hot-toast";
 import { formatEther, parseEther, Address, Hash } from "viem";
-import { useAppStore } from "./store        console.log("Claim transaction submitted:", txHash);
-
-        // Import the public client for waiting for transaction receipt
-        const { createPublicClient, http } = await import("viem");
-        const { foundry, sepolia } = await import("viem/chains");
-
-        // Determine chain based on environment
-        const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111");
-        const chain = chainId === 31337 ? foundry : sepolia;
-
-        const publicClient = createPublicClient({
-          chain,
-          transport: http(process.env.NEXT_PUBLIC_RPC_URL),
-        });{
+import { useAppStore } from "./store";
+import {
   POLICY_MANAGER_ABI,
   INSURANCE_VAULT_ABI,
   PAYOUT_VAULT_ABI,
@@ -30,6 +18,20 @@ import { useAppStore } from "./store        console.log("Claim transaction submi
   CONTRACT_ADDRESSES,
 } from "./contracts";
 import { useState, useCallback, useEffect } from "react";
+
+// Utility to create public client for transaction monitoring
+async function createTransactionClient() {
+  const { createPublicClient, http } = await import("viem");
+  const { foundry, sepolia } = await import("viem/chains");
+
+  const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111");
+  const chain = chainId === 31337 ? foundry : sepolia;
+
+  return createPublicClient({
+    chain,
+    transport: http(process.env.NEXT_PUBLIC_RPC_URL),
+  });
+}
 
 export interface TransactionConfig {
   address: Address;
@@ -248,18 +250,8 @@ export function usePolicyTransactions() {
 
         console.log("Transaction submitted:", txHash);
 
-        // Import the public client for waiting for transaction receipt
-        const { createPublicClient, http } = await import("viem");
-        const { foundry, sepolia } = await import("viem/chains");
-        
-        // Determine chain based on environment
-        const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "11155111");
-        const chain = chainId === 31337 ? foundry : sepolia;
-        
-        const publicClient = createPublicClient({
-          chain,
-          transport: http(process.env.NEXT_PUBLIC_RPC_URL),
-        });
+        // Create public client for waiting for transaction receipt
+        const publicClient = await createTransactionClient();
 
         // Wait for transaction receipt
         console.log("Waiting for transaction confirmation...");
@@ -268,7 +260,9 @@ export function usePolicyTransactions() {
           timeout: 120000, // 2 minutes timeout
         });
 
-        console.log("Transaction receipt:", receipt);        // Check if transaction was successful
+        console.log("Transaction receipt:", receipt);
+
+        // Check if transaction was successful
         if (receipt.status === "reverted") {
           throw new Error("Transaction was reverted by the contract. Please check the contract state and try again.");
         }
@@ -317,14 +311,8 @@ export function usePolicyTransactions() {
 
         console.log("Claim transaction submitted:", txHash);
 
-        // Import the public client for waiting for transaction receipt
-        const { createPublicClient, http } = await import("viem");
-        const { sepolia } = await import("viem/chains");
-
-        const publicClient = createPublicClient({
-          chain: sepolia,
-          transport: http(process.env.NEXT_PUBLIC_RPC_URL),
-        });
+        // Create public client for waiting for transaction receipt
+        const publicClient = await createTransactionClient();
 
         // Wait for transaction receipt
         console.log("Waiting for claim transaction confirmation...");
@@ -443,18 +431,8 @@ export function useV4PolicyTransactions() {
 
         console.log("V4 Liquidity + Insurance transaction submitted:", txHash);
 
-        // Import the public client for waiting for transaction receipt
-        const { createPublicClient, http } = await import("viem");
-        const { foundry, sepolia } = await import("viem/chains");
-
-        // Determine chain based on environment
-        const chainId = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || "31337");
-        const chain = chainId === 31337 ? foundry : sepolia;
-
-        const publicClient = createPublicClient({
-          chain,
-          transport: http(process.env.NEXT_PUBLIC_RPC_URL),
-        });
+        // Create public client for waiting for transaction receipt
+        const publicClient = await createTransactionClient();
 
         // Wait for transaction receipt
         console.log("Waiting for V4 transaction confirmation...");
